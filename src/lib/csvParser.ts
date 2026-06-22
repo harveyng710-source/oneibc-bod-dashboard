@@ -284,6 +284,7 @@ function buildFromRows(rows: RawRow[]): DashboardData {
           name,
           actual: num(row.actual || row.value),
           target: num(row.target),
+          cost: num(row.cost),
           type: (str(row.type) as "HQ" | "Fulfillment" | "Procurement") || "Fulfillment",
         };
         if (existing) Object.assign(existing, entry);
