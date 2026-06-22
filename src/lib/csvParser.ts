@@ -361,7 +361,7 @@ function buildFromRows(rows: RawRow[]): DashboardData {
         const existing = pd.insights.find(i => i.signal === signal);
         const entry = {
           signal,
-          category: (str(row.category) as "Operational" | "Risk" | "Revenue") || "Operational",
+          category: (str(row.category) as "Operational" | "Risk" | "Financial") || "Operational",
           description: str(row.description || row.desc),
           confidence: num(row.confidence || row.pct) / (num(row.confidence) > 1 ? 100 : 1), // handle 90 vs 0.9
           impact: (str(row.impact) as "High" | "Medium" | "Low") || "Medium",
