@@ -3,17 +3,12 @@
  * BODDashboard.tsx
  * ────────────────
  * OneIBC AI FP&A Dashboard — Real-time Financial Planning & Analysis Analyst.
- * 
- * Integrated with Salesforce Pricebook (Drivers) and Service Centers (Plants).
- * Features 4 Core Modules: Overview, Operations, Capital, and Insight Signals.
  */
 
-import { useState, useCallback, useRef, type DragEvent } from "react";
+import { useState, useCallback, useRef } from "react";
 import {
-  LayoutDashboard, Activity, Wallet, TrendingUp, Target,
-  MessageSquare, FileText, Info, Bell, MoreVertical, ChevronDown,
-  ArrowUp, ArrowDown, Minus, Building2, Clock, X, RefreshCw, ArrowRight,
-  Upload, Sparkles, Bot, Search, Download
+  Activity, Wallet, TrendingUp, Target,
+  FileText, Bell, ArrowUp, ArrowDown, Minus, Building2, X, Sparkles, Bot, Search, Download, Briefcase
 } from "lucide-react";
 import dynamicImport from "next/dynamic";
 import {
@@ -115,7 +110,6 @@ function KpiCard({ icon: Icon, label, value, target, spark, color, suffix = "M",
         </div>
         {spark && (
            <div className="w-16 h-6 shrink-0 opacity-50">
-             {/* Simple Sparkline Mock */}
              <div className="flex items-end gap-0.5 h-full">
                {spark.slice(-8).map((v, i) => (
                  <div key={i} className="flex-1 bg-slate-200 rounded-t-sm" style={{ height: `${(v / Math.max(...spark)) * 100}%` }} />
@@ -140,7 +134,6 @@ export default function BODDashboard({ initialData }: Props) {
   const [periodIdx, setPeriodIdx] = useState(() => Math.max(0, dashData.periods.length - 1));
   const [comparisonMode, setComparisonMode] = useState<ComparisonMode>("budget");
   const [aiChatOpen, setAIChatOpen] = useState(false);
-  const [refreshed, setRefreshed] = useState("just now");
   const [toast, setToast] = useState<string | null>(null);
 
   const d: PeriodData = dashData.periods[periodIdx] ?? dashData.periods[0];
@@ -196,16 +189,16 @@ export default function BODDashboard({ initialData }: Props) {
           })}
         </nav>
 
-        <div className="p-4 bg-white/5 m-4 rounded-2xl border border-white/5">
-           <div className="text-[10px] text-slate-400 font-black uppercase mb-3">Live Feed</div>
+        <div className="p-4 bg-white/5 m-4 rounded-2xl border border-white/5 no-print">
+           <div className="text-[10px] text-slate-400 font-black uppercase mb-3 text-center tracking-widest">Live Link Status</div>
            <div className="space-y-3">
               <div className="flex gap-2">
                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1" />
-                 <div className="text-[10px] leading-tight text-slate-300">Salesforce Pricebook Integration.</div>
+                 <div className="text-[10px] leading-tight text-slate-300">Salesforce synced.</div>
               </div>
               <div className="flex gap-2">
                  <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-1" />
-                 <div className="text-[10px] leading-tight text-slate-300">VN HQ synced 5m ago.</div>
+                 <div className="text-[10px] leading-tight text-slate-300">VN HQ Center connected.</div>
               </div>
            </div>
         </div>
@@ -213,8 +206,7 @@ export default function BODDashboard({ initialData }: Props) {
 
       {/* ── MAIN ───────────────────────────────────────────────────────────── */}
       <div className="flex-1 flex flex-col h-full min-w-0 overflow-hidden">
-        {/* HEADER */}
-        <header className="bg-white border-b border-slate-100 px-8 py-4 flex items-center justify-between shrink-0">
+        <header className="bg-white border-b border-slate-100 px-8 py-4 flex items-center justify-between shrink-0 no-print">
           <div className="min-w-0 flex-1">
             <h1 className="text-xl font-black text-slate-800 tracking-tight">{navLabel}</h1>
             <p className="text-[11px] text-slate-400 font-medium tracking-wide lowercase italic">oneibc board & executive intelligence layer</p>
@@ -250,15 +242,10 @@ export default function BODDashboard({ initialData }: Props) {
                <Download size={14} />
                <span>EXPORT PDF</span>
             </button>
-
-            <button className="p-2.5 rounded-xl bg-slate-50 text-slate-400 hover:bg-slate-100 relative items-center justify-center hidden md:flex">
-               <Bell size={18} />
-               <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white" />
-            </button>
           </div>
         </header>
 
-        {/* ── CONTENT ─────────────────────────────────────────────────────── */}
+        {/* ── CONTENT AREA ─────────────────────────────────────────────────── */}
         <div className="flex-1 overflow-y-auto p-8 space-y-6">
           {view === "overview" ? (
              <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -273,15 +260,10 @@ export default function BODDashboard({ initialData }: Props) {
                 {/* Scorecard + Risks */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   <Card className="lg:col-span-2 flex flex-col min-h-0">
-                    <CardHeader 
-                      title="Strategic Health Scorecard" 
-                      sub="Balanced Scorecard Pillar Performance — click to drill-down" 
-                      right={<button onClick={() => setView("operations")} className="text-[10px] font-black text-indigo-600 hover:underline uppercase tracking-widest">Detail View</button>}
-                    />
+                    <CardHeader title="Strategic Health Scorecard" sub="Balanced Scorecard Pillar Performance" />
                     <div className="grid grid-cols-4 gap-4 flex-1 items-center py-4">
                       {Object.keys(d.scorecard).map((k) => {
                         const s = d.scorecard[k as keyof typeof d.scorecard];
-                        const tone = scoreTone(s.score);
                         return (
                           <div key={k} className="text-center rounded-3xl py-4 hover:bg-slate-50 transition-all cursor-default">
                             <Gauge score={s.score} size="h-28" scoreSize="text-3xl" />
@@ -298,7 +280,7 @@ export default function BODDashboard({ initialData }: Props) {
                   <Card className="flex flex-col min-h-0">
                     <CardHeader title="Enterprise Risks" sub="Operational & Compliance Watchlist" />
                     <div className="space-y-4 overflow-y-auto pr-1">
-                      {d.risks.map((r) => (
+                      {d.risks.slice(0, 4).map((r) => (
                         <div key={r.area} className="flex items-center justify-between text-[11px] gap-2 p-3 rounded-2xl hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-100">
                           <div className="min-w-0">
                             <div className="font-black text-slate-700 truncate">{r.area}</div>
@@ -311,7 +293,7 @@ export default function BODDashboard({ initialData }: Props) {
                   </Card>
                 </div>
 
-                {/* Variance Intelligence */}
+                {/* Variance + Drivers */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                    <Card className="lg:col-span-2 flex flex-col h-[400px]">
                       <CardHeader title="Variance Intelligence" sub="Real-time Revenue vs Budget/Forecast Deviation" />
@@ -321,7 +303,7 @@ export default function BODDashboard({ initialData }: Props) {
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                             <XAxis dataKey="q" axisLine={false} tickLine={false} tick={{fontSize: 10, fontStyle: 'bold', fill: '#94a3b8'}} />
                             <YAxis axisLine={false} tickLine={false} tick={{fontSize: 10, fontStyle: 'bold', fill: '#94a3b8'}} />
-                            <Tooltip contentStyle={{borderRadius: '20px', border: 'none', boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.25)'}} />
+                            <Tooltip contentStyle={{borderRadius: '20px', border: 'none'}} />
                             <Area type="monotone" dataKey="actual" stroke="#6366f1" strokeWidth={5} fillOpacity={1} fill="url(#colorPulse)" />
                             <defs>
                               <linearGradient id="colorPulse" x1="0" y1="0" x2="0" y2="1">
@@ -347,7 +329,7 @@ export default function BODDashboard({ initialData }: Props) {
                           </div>
                         ))}
                       </div>
-                      <div className="mt-8 p-5 bg-indigo-50/50 rounded-3xl border border-indigo-100 italic text-[10px] text-indigo-600 font-bold">
+                      <div className="mt-auto p-5 bg-indigo-50/50 rounded-3xl border border-indigo-100 italic text-[10px] text-indigo-600 font-bold">
                          *Salesforce Pricebook Integration • Automated Refresh
                       </div>
                    </Card>
@@ -356,9 +338,9 @@ export default function BODDashboard({ initialData }: Props) {
                 {/* Initiatives + Stories */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <Card>
-                    <CardHeader title="Strategic Initiatives" sub="Global Council Execution Tracking" />
+                    <CardHeader title="Strategic Initiatives" sub="Global Council Execution" />
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-6 mt-2">
-                      {d.initiatives.map((it) => (
+                      {d.initiatives.slice(0, 4).map((it) => (
                         <div key={it.name}>
                           <div className="flex items-center justify-between mb-2.5 gap-2">
                             <span className="text-[11px] font-black text-slate-700 truncate">{it.name}</span>
@@ -380,26 +362,25 @@ export default function BODDashboard({ initialData }: Props) {
                             <Badge label={s.sentiment} tone={s.sentiment === "Positive" ? "emerald" : s.sentiment === "Watch" ? "amber" : "red"} />
                           </div>
                           <p className="text-[10px] text-slate-500 mt-1.5 leading-relaxed font-medium">{s.summary}</p>
-                          <div className="text-[9px] text-slate-400 font-bold uppercase mt-2">{s.thread} • {s.time}</div>
                         </div>
                       ))}
                     </div>
                   </Card>
                 </div>
 
-                {/* Bot Insight */}
+                {/* AI Bottom Panel */}
                 <div className="bg-[#0c1430] rounded-[32px] p-8 text-white shadow-2xl relative overflow-hidden group">
-                   <div className="absolute top-0 right-0 p-12 opacity-5 scale-150 rotate-12 transition-transform group-hover:scale-175 group-hover:rotate-0">
+                   <div className="absolute top-0 right-0 p-12 opacity-5 scale-150 rotate-12 transition-transform group-hover:scale-175">
                       <Sparkles size={160} />
                    </div>
                    <div className="relative flex flex-col md:flex-row items-center gap-8">
-                      <div className="w-20 h-20 rounded-3xl bg-indigo-600 flex items-center justify-center shrink-0 shadow-xl shadow-indigo-600/40">
+                      <div className="w-20 h-20 rounded-3xl bg-indigo-600 flex items-center justify-center shrink-0">
                          <Bot size={40} />
                       </div>
                       <div className="flex-1">
                          <div className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-400 mb-2">OneIBC AI Executive Insight</div>
                          <div className="flex flex-col gap-2">
-                            {d.narrative.map((n, i) => (
+                            {d.narrative.slice(0, 2).map((n, i) => (
                                <div key={i} className="text-base font-bold text-slate-100 flex gap-3">
                                   <span className="text-indigo-500 font-black shrink-0">{i+1}.</span>
                                   <span>{n}</span>
@@ -407,51 +388,72 @@ export default function BODDashboard({ initialData }: Props) {
                             ))}
                          </div>
                       </div>
-                      <button onClick={() => setAIChatOpen(true)} className="px-8 py-5 bg-indigo-600 text-white rounded-2xl font-black text-xs hover:bg-indigo-500 transition-all shrink-0 border border-white/10 shadow-lg hover:shadow-indigo-600/20 active:scale-95">
+                      <button onClick={() => setAIChatOpen(true)} className="px-8 py-5 bg-indigo-600 text-white rounded-2xl font-black text-xs hover:bg-indigo-500 transition-all shrink-0 border border-white/10 shadow-lg">
                          Start Agentic Chat
                       </button>
                    </div>
                 </div>
              </div>
           ) : view === "operations" ? (
-             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <Card>
-                   <CardHeader title="Fulfillment Plants (Centers)" sub="Operational performance by Location" />
-                   <div className="space-y-4">
-                      {d.operations?.serviceCenters.map(sc => (
-                        <div key={sc.name} className="flex items-center justify-between p-6 rounded-3xl bg-slate-50 border border-slate-100 hover:border-indigo-200 transition-all">
-                           <div>
-                              <div className="text-base font-black text-slate-800">{sc.name}</div>
-                              <Badge label={sc.type} tone={sc.type === 'HQ' ? 'indigo' : 'slate'} />
-                           </div>
-                           <div className="text-right">
-                              <div className="text-xl font-black text-slate-800">${sc.actual}M</div>
-                              <div className={`text-[10px] font-bold ${sc.actual > sc.target ? 'text-red-500' : 'text-emerald-500'}`}>
-                                Var: {sc.actual > sc.target ? '+' : '-'}${Math.abs(sc.actual - sc.target).toFixed(2)}M
+             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                   <Card>
+                      <CardHeader title="Fulfillment Plants (Centers)" sub="Operational performance by Location" />
+                      <div className="space-y-4">
+                         {d.operations?.serviceCenters.map(sc => (
+                           <div key={sc.name} className="flex items-center justify-between p-6 rounded-3xl bg-slate-50 border border-slate-100 hover:border-indigo-200 transition-all">
+                              <div>
+                                 <div className="text-base font-black text-slate-800">{sc.name}</div>
+                                 <Badge label={sc.type} tone={sc.type === 'HQ' ? 'indigo' : 'slate'} />
+                              </div>
+                              <div className="text-right">
+                                 <div className="text-xl font-black text-slate-800">${sc.actual}M</div>
+                                 <div className={`text-[10px] font-bold ${sc.actual > sc.target ? 'text-red-500' : 'text-emerald-500'}`}>
+                                   Var: {sc.actual > sc.target ? '+' : '-'}${Math.abs(sc.actual - sc.target).toFixed(2)}M
+                                 </div>
                               </div>
                            </div>
-                        </div>
-                      ))}
-                   </div>
-                </Card>
-                <Card>
-                   <CardHeader title="Supplier & Bank Ecosystem" sub="Financial Integrity & Spend Management" />
-                   <div className="space-y-8">
-                      {d.operations?.suppliers.map(sup => (
-                        <div key={sup.name} className="p-5 rounded-3xl border border-slate-50 shadow-sm hover:shadow-md transition-shadow">
-                           <div className="flex justify-between items-center mb-4">
-                              <div className="text-sm font-black text-slate-800 flex items-center gap-3">
-                                 {sup.name} <span className="text-[10px] text-slate-400 font-bold bg-slate-100 px-2.5 py-1 rounded-lg uppercase tracking-wider">{sup.category}</span>
+                         ))}
+                      </div>
+                   </Card>
+                   <Card>
+                      <CardHeader title="Supplier & Bank Ecosystem" sub="Financial Integrity & Spend" />
+                      <div className="space-y-8">
+                         {d.operations?.suppliers.map(sup => (
+                           <div key={sup.name} className="p-5 rounded-3xl border border-slate-50 shadow-sm">
+                              <div className="flex justify-between items-center mb-4">
+                                 <div className="text-sm font-black text-slate-800 flex items-center gap-3">
+                                    {sup.name} <span className="text-[10px] text-slate-400 font-bold bg-slate-100 px-2.5 py-1 rounded-lg uppercase tracking-wider">{sup.category}</span>
+                                 </div>
+                                 <div className="text-sm font-black text-indigo-600">{sup.performance}% Efficiency</div>
                               </div>
-                              <div className="text-sm font-black text-indigo-600">{sup.performance}% Efficiency</div>
+                              <ProgressBar value={sup.performance} tone={sup.performance > 90 ? "emerald" : "amber"} thick />
                            </div>
-                           <ProgressBar value={sup.performance} tone={sup.performance > 90 ? "emerald" : "amber"} thick />
-                           <div className="mt-3 flex justify-between text-[11px] text-slate-400 font-bold uppercase tracking-wide">
-                              <span>Monthly Volume: ${sup.spend}M</span>
-                              <span>SLA Status: On Track</span>
-                           </div>
-                        </div>
-                      ))}
+                         ))}
+                      </div>
+                   </Card>
+                </div>
+
+                {/* Workforce Analysis Card */}
+                <Card>
+                   <CardHeader title="Workforce Intelligence" sub="Efficiency, Utilization & Capacity tracking" />
+                   <div className="grid grid-cols-1 md:grid-cols-4 gap-6 py-4">
+                      <div className="text-center p-6 bg-slate-50 rounded-3xl">
+                         <div className="text-[10px] font-black text-slate-400 uppercase mb-2">Total Headcount</div>
+                         <div className="text-3xl font-black text-slate-800">{d.operations?.workforce?.headcount || 0}</div>
+                      </div>
+                      <div className="text-center p-6 bg-slate-50 rounded-3xl">
+                         <div className="text-[10px] font-black text-slate-400 uppercase mb-2">Capacity Utilization</div>
+                         <div className="text-3xl font-black text-indigo-600">{d.operations?.workforce?.utilization || 0}%</div>
+                      </div>
+                      <div className="text-center p-6 bg-slate-50 rounded-3xl">
+                         <div className="text-[10px] font-black text-slate-400 uppercase mb-2">Attrition Rate</div>
+                         <div className="text-3xl font-black text-amber-500">{d.operations?.workforce?.attrition || 0}%</div>
+                      </div>
+                      <div className="text-center p-6 bg-slate-50 rounded-3xl">
+                         <div className="text-[10px] font-black text-slate-400 uppercase mb-2">Cost per Head</div>
+                         <div className="text-3xl font-black text-slate-800">${d.operations?.workforce?.costPerHead || 0}K</div>
+                      </div>
                    </div>
                 </Card>
              </div>
@@ -467,7 +469,7 @@ export default function BODDashboard({ initialData }: Props) {
                          <div className="text-right">Var</div>
                       </div>
                       {d.capital?.pl.map((line, i) => (
-                        <div key={i} className={`grid grid-cols-4 px-5 py-5 text-[13px] font-bold rounded-2xl transition-colors ${i % 2 === 0 ? 'bg-slate-50/50 hover:bg-slate-100/50' : 'bg-white hover:bg-slate-50'}`}>
+                        <div key={i} className={`grid grid-cols-4 px-5 py-5 text-[13px] font-bold rounded-2xl ${i % 2 === 0 ? 'bg-slate-50/50' : 'bg-white'}`}>
                            <div className="text-slate-800">{line.item}</div>
                            <div className="text-right">${line.actual}M</div>
                            <div className="text-right text-slate-400 font-medium">${line.budget}M</div>
@@ -492,7 +494,7 @@ export default function BODDashboard({ initialData }: Props) {
                    </div>
                    <div className="grid grid-cols-3 gap-4">
                       {d.capital?.cashFlow.map(cf => (
-                        <div key={cf.category} className="p-6 bg-slate-50 rounded-[2rem] border border-slate-100 transition-all hover:scale-105 hover:bg-white hover:border-indigo-100">
+                        <div key={cf.category} className="p-6 bg-slate-50 rounded-[2rem] border border-slate-100 transition-all hover:scale-105">
                            <div className="text-[10px] text-slate-400 font-bold uppercase mb-2 tracking-widest truncate">{cf.category}</div>
                            <div className={`text-lg font-black ${cf.net >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
                               ${cf.net}M
@@ -511,7 +513,7 @@ export default function BODDashboard({ initialData }: Props) {
                             <div className="flex justify-between items-start mb-5">
                                <Badge label={ins.category} tone={ins.category === "Risk" ? "red" : "indigo"} />
                                <div className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-4 py-1.5 rounded-full uppercase tracking-wider">
-                                  {Math.round(ins.confidence * 100)}% Confidence
+                                  {Math.round(ins.confidence * 100)}% Match
                                </div>
                             </div>
                             <h3 className="text-base font-black text-slate-800 mb-4">{ins.signal}</h3>
@@ -520,7 +522,7 @@ export default function BODDashboard({ initialData }: Props) {
                          <div className="flex items-center justify-between pt-6 border-t border-slate-50">
                             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Impact Score</span>
                             <span className={`text-[11px] font-black px-4 py-1.5 rounded-xl uppercase ${ins.impact === "High" ? "bg-red-50 text-red-600" : "bg-amber-50 text-amber-600"}`}>
-                               {ins.impact} IMPACT
+                               {ins.impact}
                             </span>
                          </div>
                       </Card>
@@ -532,21 +534,18 @@ export default function BODDashboard({ initialData }: Props) {
                       <Sparkles size={160} />
                    </div>
                    <div className="relative">
-                      <CardHeader title="AI Forecast Intelligence" sub="Sensitivity analysis based on current Salesforce pipeline strength" />
+                      <CardHeader title="AI Forecast Intelligence" sub="Sensitivity analysis based on current Salesforce pipeline" />
                       <div className="flex flex-col md:flex-row gap-12 items-center mt-6">
                          <div className="text-5xl font-black text-emerald-400 drop-shadow-lg">+12.4%</div>
                          <p className="text-base font-bold text-slate-300 leading-relaxed max-w-2xl">
-                            Pipeline analysis confirms a potential 12.4% upside to the {d.label} revenue targets. This is primarily driven by 
-                            the Service Bundle pricebook performance in Vietnam and Singapore fulfillment centers.
+                            Pipeline analysis confirms a potential 12.4% upside to the {d.label} revenue targets. Primarily driven by 
+                            Service Bundle pricebook performance.
                          </p>
-                         <button className="px-10 py-5 rounded-3xl bg-indigo-600 text-white font-black text-xs hover:bg-indigo-500 transition-all shadow-xl shadow-indigo-600/20 whitespace-nowrap active:scale-95">
-                            Simulate Best Case
-                         </button>
                       </div>
                    </div>
                 </Card>
              </div>
-          {view === "briefing" ? (
+          ) : view === "briefing" ? (
              <div className="max-w-4xl mx-auto py-12 px-10 bg-white shadow-2xl min-h-[1000px] animate-in fade-in zoom-in duration-700 font-serif text-slate-900 border border-slate-100 rounded-lg print:shadow-none print:border-none print:m-0 print:p-0 print:max-w-none">
                 <div className="text-center mb-16 border-b-2 border-indigo-600 pb-8">
                    <div className="text-[10px] font-black uppercase tracking-[0.4em] text-indigo-600 mb-4 px-4 py-1.5 bg-indigo-50 inline-block rounded-full">OneIBC Group · Confidential</div>
@@ -555,7 +554,6 @@ export default function BODDashboard({ initialData }: Props) {
                 </div>
 
                 <div className="space-y-12">
-                   {/* Summary Section */}
                    <section>
                       <h2 className="text-xl font-black uppercase tracking-widest text-indigo-600 mb-6 border-l-4 border-indigo-600 pl-4">1. Executive Summary</h2>
                       <div className="space-y-4">
@@ -567,7 +565,6 @@ export default function BODDashboard({ initialData }: Props) {
                       </div>
                    </section>
 
-                   {/* Financial Table Section */}
                    <section>
                       <h2 className="text-xl font-black uppercase tracking-widest text-indigo-600 mb-6 border-l-4 border-indigo-600 pl-4">2. Financial Performance Matrix</h2>
                       <table className="w-full border-collapse">
@@ -585,7 +582,7 @@ export default function BODDashboard({ initialData }: Props) {
                                { label: 'Gross Profit', actual: d.gp, budget: d.gpTarget },
                                { label: 'EBITDA', actual: d.ebitda, budget: d.ebitdaTarget },
                             ].map((m) => (
-                               <tr key={m.label} className="hover:bg-slate-50/50 transition-colors">
+                               <tr key={m.label} className="hover:bg-slate-50/50">
                                   <td className="p-4 font-black">{m.label}</td>
                                   <td className="p-4 text-right font-bold">${m.actual}M</td>
                                   <td className="p-4 text-right text-slate-400">${m.budget}M</td>
@@ -598,27 +595,31 @@ export default function BODDashboard({ initialData }: Props) {
                       </table>
                    </section>
 
-                   {/* Operational Section */}
                    <section>
-                      <h2 className="text-xl font-black uppercase tracking-widest text-indigo-600 mb-6 border-l-4 border-indigo-600 pl-4">3. Operational Stability</h2>
-                      <div className="grid grid-cols-2 gap-8">
+                      <h2 className="text-xl font-black uppercase tracking-widest text-indigo-600 mb-6 border-l-4 border-indigo-600 pl-4">3. Operational Stability & Workforce</h2>
+                      <div className="grid grid-cols-2 gap-8 mb-8">
                          {d.operations?.serviceCenters.map(sc => (
                             <div key={sc.name} className="p-6 bg-slate-50 rounded-3xl">
                                <div className="flex justify-between items-center mb-2">
                                   <span className="font-black text-slate-800">{sc.name}</span>
-                                  <span className={`text-xs font-black px-2 py-1 rounded-lg ${sc.actual >= sc.target ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
-                                     {sc.actual >= sc.target ? 'Optimal' : 'Under Target'}
-                                  </span>
                                </div>
-                               <p className="text-[10px] font-bold text-slate-400 uppercase">{sc.type} Performance Index: {Math.round(sc.actual/sc.target*100)}%</p>
+                               <p className="text-[10px] font-bold text-slate-400 uppercase">{sc.type} Index: {Math.round(sc.actual/sc.target*100)}%</p>
                             </div>
                          ))}
                       </div>
+                      <div className="p-8 border border-slate-100 rounded-3xl">
+                         <div className="text-sm font-black text-slate-800 mb-4 uppercase tracking-widest">Workforce Metrics</div>
+                         <div className="grid grid-cols-4 gap-4">
+                            <div><div className="text-[10px] text-slate-400 font-bold">HEADCOUNT</div><div className="text-xl font-bold">{d.operations?.workforce?.headcount}</div></div>
+                            <div><div className="text-[10px] text-slate-400 font-bold">UTILIZATION</div><div className="text-xl font-bold">{d.operations?.workforce?.utilization}%</div></div>
+                            <div><div className="text-[10px] text-slate-400 font-bold">ATTRITION</div><div className="text-xl font-bold text-amber-600">{d.operations?.workforce?.attrition}%</div></div>
+                            <div><div className="text-[10px] text-slate-400 font-bold">COST/HEAD</div><div className="text-xl font-bold">${d.operations?.workforce?.costPerHead}K</div></div>
+                         </div>
+                      </div>
                    </section>
 
-                   {/* Risks Section */}
                    <section>
-                      <h2 className="text-xl font-black uppercase tracking-widest text-indigo-600 mb-6 border-l-4 border-indigo-600 pl-4">4. Risk Watchlist & Countermeasures</h2>
+                      <h2 className="text-xl font-black uppercase tracking-widest text-indigo-600 mb-6 border-l-4 border-indigo-600 pl-4">4. Risk Watchlist</h2>
                       <div className="space-y-4">
                          {d.risks.filter(r => r.sev === "High" || r.sev === "Medium").map((r) => (
                             <div key={r.area} className="flex gap-6 p-6 border border-slate-100 rounded-3xl">
@@ -626,26 +627,17 @@ export default function BODDashboard({ initialData }: Props) {
                                <div>
                                   <div className="font-black text-slate-900 mb-1">{r.area}</div>
                                   <p className="text-sm text-slate-500 font-medium">{r.desc}</p>
-                                  <div className="mt-3 text-[10px] font-black text-indigo-600 uppercase tracking-widest">Accountable: {r.owner}</div>
                                </div>
                             </div>
                          ))}
                       </div>
                    </section>
                 </div>
-
-                <div className="mt-20 pt-10 border-t border-slate-100 text-center text-[10px] font-bold text-slate-300 uppercase tracking-widest">
-                   Generated by OneIBC AI System • Internal Deployment only • {new Date().toLocaleDateString()}
-                </div>
              </div>
           ) : (
              <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <Card className="max-w-4xl mx-auto p-8">
-                   <CardHeader 
-                    title="Management Reports Library" 
-                    sub="MIS Governance Tier-1 Document Stack" 
-                    right={<div className="p-3 bg-slate-100 rounded-2xl"><Search size={20} className="text-slate-400" /></div>}
-                   />
+                   <CardHeader title="Reports Library" sub="MIS Governance Tier-1 Document Stack" />
                    <div className="divide-y divide-slate-100 mt-6">
                       {dashData.reports.map((r) => (
                         <div key={r.name} className="flex items-center justify-between py-6 group cursor-pointer hover:px-4 transition-all rounded-2xl">
@@ -658,7 +650,7 @@ export default function BODDashboard({ initialData }: Props) {
                                  <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1.5">Automated MIS • {r.updated}</div>
                               </div>
                            </div>
-                           <button className="w-12 h-12 rounded-full flex items-center justify-center text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 transition-all shadow-sm">
+                           <button className="w-12 h-12 rounded-full flex items-center justify-center text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 transition-all">
                               <Download size={22} />
                            </button>
                         </div>
@@ -670,19 +662,11 @@ export default function BODDashboard({ initialData }: Props) {
         </div>
       </div>
 
-      {/* AI Chat Panel */}
-      <AIChatPanel 
-        currentData={d} 
-        isOpen={aiChatOpen} 
-        onClose={() => setAIChatOpen(false)} 
-      />
+      <AIChatPanel currentData={d} isOpen={aiChatOpen} onClose={() => setAIChatOpen(false)} />
 
-      {/* TOAST */}
       {toast && (
-        <div className="fixed bottom-10 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[11px] font-black px-8 py-4 rounded-[2rem] shadow-2xl flex items-center gap-5 z-50 animate-in fade-in zoom-in slide-in-from-bottom-5">
-          <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
+        <div className="fixed bottom-10 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[11px] font-black px-8 py-4 rounded-[2rem] shadow-2xl z-50 animate-in fade-in zoom-in slide-in-from-bottom-5">
           {toast}
-          <button onClick={() => setToast(null)} className="text-slate-500 hover:text-white transition-colors ml-2"><X size={16} /></button>
         </div>
       )}
     </div>

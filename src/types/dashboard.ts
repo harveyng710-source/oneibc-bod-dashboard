@@ -99,6 +99,12 @@ export interface PeriodData {
   operations?: {
     serviceCenters: { name: string; type: "HQ" | "Fulfillment" | "Procurement"; cost: number; actual: number; target: number }[];
     suppliers: { name: string; category: "Bank" | "Agent"; spend: number; performance: number }[];
+    workforce?: {
+      headcount: number;
+      utilization: number;
+      attrition: number;
+      costPerHead: number;
+    };
   };
   capital?: {
     pl: { item: string; actual: number; budget: number; variance: number }[];

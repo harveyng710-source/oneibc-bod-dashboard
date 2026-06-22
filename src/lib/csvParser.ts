@@ -306,6 +306,20 @@ function buildFromRows(rows: RawRow[]): DashboardData {
         else pd.operations.suppliers.push(entry);
         break;
       }
+      // ── Workforce ─────────────────────────────────────────────────────────
+      case "workforce": {
+        if (!pd) break;
+        if (!pd.operations) pd.operations = { serviceCenters: [], suppliers: [] };
+        if (!pd.operations.workforce) {
+          pd.operations.workforce = { headcount: 0, utilization: 0, attrition: 0, costPerHead: 0 };
+        }
+        const metric = str(row.metric).toLowerCase().replace(/\s+/g, "_");
+        if (metric === "headcount")      pd.operations.workforce.headcount = num(row.value);
+        if (metric === "utilization")    pd.operations.workforce.utilization = num(row.value || row.pct);
+        if (metric === "attrition")      pd.operations.workforce.attrition = num(row.value || row.pct);
+        if (metric === "cost_per_head")  pd.operations.workforce.costPerHead = num(row.value);
+        break;
+      }
       // ── Capital P&L ────────────────────────────────────────────────────────
       case "capital_pl": {
         if (!pd) break;
