@@ -274,6 +274,96 @@ function buildFromRows(rows: RawRow[]): DashboardData {
         else base.reports.push({ name, updated: str(row.updated) });
         break;
       }
+      // ── Operations Centers ────────────────────────────────────────────────
+      case "operations_center": {
+        if (!pd) break;
+        if (!pd.operations) pd.operations = { serviceCenters: [], suppliers: [] };
+        const name = str(row.name || row.metric);
+        const existing = pd.operations.serviceCenters.find(sc => sc.name === name);
+        const entry = {
+          name,
+          actual: num(row.actual || row.value),
+          target: num(row.target),
+          type: (str(row.type) as "HQ" | "Fulfillment" | "Procurement") || "Fulfillment",
+        };
+        if (existing) Object.assign(existing, entry);
+        else pd.operations.serviceCenters.push(entry);
+        break;
+      }
+      // ── Supply Partners ───────────────────────────────────────────────────
+      case "supply_partner": {
+        if (!pd) break;
+        if (!pd.operations) pd.operations = { serviceCenters: [], suppliers: [] };
+        const name = str(row.name || row.metric);
+        const existing = pd.operations.suppliers.find(s => s.name === name);
+        const entry = {
+          name,
+          category: str(row.category),
+          performance: num(row.performance || row.pct),
+          spend: num(row.spend || row.value),
+        };
+        if (existing) Object.assign(existing, entry);
+        else pd.operations.suppliers.push(entry);
+        break;
+      }
+      // ── Capital P&L ────────────────────────────────────────────────────────
+      case "capital_pl": {
+        if (!pd) break;
+        if (!pd.capital) pd.capital = { pl: [], cashFlow: [] };
+        const item = str(row.item || row.name || row.metric);
+        const existing = pd.capital.pl.find(p => p.item === item);
+        const entry = {
+          item,
+          actual: num(row.actual || row.value),
+          budget: num(row.budget || row.target),
+          variance: num(row.variance),
+        };
+        if (existing) Object.assign(existing, entry);
+        else pd.capital.pl.push(entry);
+        break;
+      }
+      // ── Capital Cash Flow ──────────────────────────────────────────────────
+      case "capital_cf": {
+        if (!pd) break;
+        if (!pd.capital) pd.capital = { pl: [], cashFlow: [] };
+        const category = str(row.category || row.name || row.metric);
+        const existing = pd.capital.cashFlow.find(c => c.category === category);
+        const entry = {
+          category,
+          inflow: num(row.inflow),
+          outflow: num(row.outflow),
+          net: num(row.net || row.value),
+        };
+        if (existing) Object.assign(existing, entry);
+        else pd.capital.cashFlow.push(entry);
+        break;
+      }
+      // ── Insight Signals ────────────────────────────────────────────────────
+      case "insight_signal": {
+        if (!pd) break;
+        if (!pd.insights) pd.insights = [];
+        const signal = str(row.signal || row.name || row.metric);
+        const existing = pd.insights.find(i => i.signal === signal);
+        const entry = {
+          signal,
+          category: (str(row.category) as "Operational" | "Risk" | "Revenue") || "Operational",
+          description: str(row.description || row.desc),
+          confidence: num(row.confidence || row.pct) / (num(row.confidence) > 1 ? 100 : 1), // handle 90 vs 0.9
+          impact: (str(row.impact) as "High" | "Medium" | "Low") || "Medium",
+        };
+        if (existing) Object.assign(existing, entry);
+        else pd.insights.push(entry);
+        break;
+      }
+      // ── Revenue Targets (Budget vs Forecast) ──────────────────────────────
+      case "revenue_targets": {
+        if (!pd) break;
+        const metric = str(row.metric).toLowerCase().replace(/\s+/g, "_");
+        if (metric === "revenue_forecast") pd.revenueForecast = num(row.value);
+        if (metric === "gp_forecast")      pd.gpForecast      = num(row.value);
+        if (metric === "ebitda_forecast")  pd.ebitdaForecast  = num(row.value);
+        break;
+      }
     }
   }
 

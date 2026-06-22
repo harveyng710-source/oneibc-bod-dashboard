@@ -42,6 +42,7 @@ export const NAV = [
   { id: "operations",  label: "Operations (Centers)", icon: "Activity" },
   { id: "capital",     label: "Capital (Financials)", icon: "Wallet" },
   { id: "insight",     label: "Insight Signals",      icon: "Sparkles" },
+  { id: "briefing",    label: "Executive Briefing",   icon: "Briefcase" },
   { id: "reports",     label: "Reports Library",      icon: "FileText" },
 ] as const;
 
