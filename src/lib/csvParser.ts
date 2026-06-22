@@ -299,7 +299,7 @@ function buildFromRows(rows: RawRow[]): DashboardData {
         const existing = pd.operations.suppliers.find(s => s.name === name);
         const entry = {
           name,
-          category: str(row.category),
+          category: (str(row.category) as "Bank" | "Agent") || "Bank",
           performance: num(row.performance || row.pct),
           spend: num(row.spend || row.value),
         };
