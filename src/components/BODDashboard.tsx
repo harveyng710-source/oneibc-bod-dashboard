@@ -56,6 +56,22 @@ function ProgressBar({ value, tone, thick = false }: { value: number; tone: stri
   );
 }
 
+function Gauge({ score, size = "h-24", scoreSize = "text-3xl" }: { score: number; size?: string; scoreSize?: string }) {
+  const tone = scoreTone(score);
+  const color = colorMap[tone].bar;
+  return (
+    <div className={`relative ${size} flex items-center justify-center`}>
+      <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
+        <circle cx="50" cy="50" r="40" fill="none" stroke="#f1f5f9" strokeWidth="8" />
+        <circle cx="50" cy="50" r="40" fill="none" stroke={color} strokeWidth="8" strokeDasharray={`${(score / 100) * 251} 251`} strokeLinecap="round" className="transition-all duration-1000" />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center leading-none">
+        <span className={`${scoreSize} font-black text-slate-800`}>{score}</span>
+      </div>
+    </div>
+  );
+}
+
 function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return <div className={`bg-white rounded-2xl shadow-sm border border-slate-100 p-4 ${className}`}>{children}</div>;
 }
@@ -126,7 +142,6 @@ export default function BODDashboard({ initialData }: Props) {
   const [aiChatOpen, setAIChatOpen] = useState(false);
   const [refreshed, setRefreshed] = useState("just now");
   const [toast, setToast] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
 
   const d: PeriodData = dashData.periods[periodIdx] ?? dashData.periods[0];
   
@@ -137,11 +152,6 @@ export default function BODDashboard({ initialData }: Props) {
 
   const forecastPct = Math.round((d.forecastBase / d.forecastTarget) * 100);
   const navLabel = NAV.find((n) => n.id === view)?.label || "AI Overview";
-
-  function showToast(msg: string) {
-    setToast(msg);
-    setTimeout(() => setToast(null), 2400);
-  }
 
   return (
     <div className="flex h-screen bg-slate-50 text-slate-800 overflow-hidden relative font-sans">
@@ -179,11 +189,11 @@ export default function BODDashboard({ initialData }: Props) {
            <div className="space-y-3">
               <div className="flex gap-2">
                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1" />
-                 <div className="text-[10px] leading-tight text-slate-300">Salesforce Pricebook linked successfully.</div>
+                 <div className="text-[10px] leading-tight text-slate-300">Salesforce Pricebook Integration.</div>
               </div>
               <div className="flex gap-2">
                  <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-1" />
-                 <div className="text-[10px] leading-tight text-slate-300">VN Service Center synced 5m ago.</div>
+                 <div className="text-[10px] leading-tight text-slate-300">VN HQ synced 5m ago.</div>
               </div>
            </div>
         </div>
@@ -195,10 +205,10 @@ export default function BODDashboard({ initialData }: Props) {
         <header className="bg-white border-b border-slate-100 px-8 py-4 flex items-center justify-between shrink-0">
           <div className="min-w-0 flex-1">
             <h1 className="text-xl font-black text-slate-800 tracking-tight">{navLabel}</h1>
-            <p className="text-[11px] text-slate-400 font-medium">FP&A Pulse Intelligence • Global Management Tier-1</p>
+            <p className="text-[11px] text-slate-400 font-medium tracking-wide lowercase italic">oneibc board & executive intelligence layer</p>
           </div>
           
-          <div className="flex items-center gap-4 group">
+          <div className="flex items-center gap-4">
             <div className="flex bg-slate-100 p-1 rounded-xl gap-1">
                {(["budget", "forecast"] as const).map(m => (
                  <button 
@@ -240,6 +250,48 @@ export default function BODDashboard({ initialData }: Props) {
                   <KpiCard icon={Activity} label={`EBITDA (${currentTargetLabel})`} value={d.ebitda} target={ebitdaTarget} spark={d.ebitdaSpark} color="#f59e0b" />
                 </div>
 
+                {/* Scorecard + Risks */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  <Card className="lg:col-span-2 flex flex-col min-h-0">
+                    <CardHeader 
+                      title="Strategic Health Scorecard" 
+                      sub="Balanced Scorecard Pillar Performance — click to drill-down" 
+                      right={<button onClick={() => setView("operations")} className="text-[10px] font-black text-indigo-600 hover:underline uppercase tracking-widest">Detail View</button>}
+                    />
+                    <div className="grid grid-cols-4 gap-4 flex-1 items-center py-4">
+                      {Object.keys(d.scorecard).map((k) => {
+                        const s = d.scorecard[k as keyof typeof d.scorecard];
+                        const tone = scoreTone(s.score);
+                        return (
+                          <div key={k} className="text-center rounded-3xl py-4 hover:bg-slate-50 transition-all cursor-default">
+                            <Gauge score={s.score} size="h-28" scoreSize="text-3xl" />
+                            <div className="text-[12px] font-black text-slate-800 mt-4 truncate px-2">{SCORECARD_META[k].label}</div>
+                            <div className="mt-2 text-[10px] text-slate-400 font-bold flex items-center justify-center gap-1 uppercase">
+                              <TrendArrow trend={s.trend} size={10} /> {Math.abs(s.trend)} pts vs prev
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </Card>
+
+                  <Card className="flex flex-col min-h-0">
+                    <CardHeader title="Enterprise Risks" sub="Operational & Compliance Watchlist" />
+                    <div className="space-y-4 overflow-y-auto pr-1">
+                      {d.risks.map((r) => (
+                        <div key={r.area} className="flex items-center justify-between text-[11px] gap-2 p-3 rounded-2xl hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-100">
+                          <div className="min-w-0">
+                            <div className="font-black text-slate-700 truncate">{r.area}</div>
+                            <div className="text-slate-400 truncate text-[10px] font-medium mt-0.5">{r.desc}</div>
+                          </div>
+                          <Badge label={r.sev} tone={sevColor(r.sev)} />
+                        </div>
+                      ))}
+                    </div>
+                  </Card>
+                </div>
+
+                {/* Variance Intelligence */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                    <Card className="lg:col-span-2 flex flex-col h-[400px]">
                       <CardHeader title="Variance Intelligence" sub="Real-time Revenue vs Budget/Forecast Deviation" />
@@ -247,13 +299,13 @@ export default function BODDashboard({ initialData }: Props) {
                         <ResponsiveContainer width="100%" height="100%">
                           <AreaChart data={d.chart}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                            <XAxis dataKey="q" axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 700, fill: '#94a3b8'}} />
-                            <YAxis axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 700, fill: '#94a3b8'}} />
-                            <Tooltip contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)'}} />
-                            <Area type="monotone" dataKey="actual" stroke="#6366f1" strokeWidth={4} fillOpacity={1} fill="url(#colorPulse)" />
+                            <XAxis dataKey="q" axisLine={false} tickLine={false} tick={{fontSize: 10, fontStyle: 'bold', fill: '#94a3b8'}} />
+                            <YAxis axisLine={false} tickLine={false} tick={{fontSize: 10, fontStyle: 'bold', fill: '#94a3b8'}} />
+                            <Tooltip contentStyle={{borderRadius: '20px', border: 'none', boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.25)'}} />
+                            <Area type="monotone" dataKey="actual" stroke="#6366f1" strokeWidth={5} fillOpacity={1} fill="url(#colorPulse)" />
                             <defs>
                               <linearGradient id="colorPulse" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#6366f1" stopOpacity={0.15}/>
+                                <stop offset="5%" stopColor="#6366f1" stopOpacity={0.25}/>
                                 <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
                               </linearGradient>
                             </defs>
@@ -275,27 +327,70 @@ export default function BODDashboard({ initialData }: Props) {
                           </div>
                         ))}
                       </div>
-                      <div className="mt-8 p-4 bg-slate-50 rounded-2xl border border-slate-100 italic text-[10px] text-slate-400">
-                         *Data pulled from Salesforce Pricebook • Refresh in 14m
+                      <div className="mt-8 p-5 bg-indigo-50/50 rounded-3xl border border-indigo-100 italic text-[10px] text-indigo-600 font-bold">
+                         *Salesforce Pricebook Integration • Automated Refresh
                       </div>
                    </Card>
                 </div>
 
-                <div className="bg-indigo-600 rounded-3xl p-6 text-white shadow-xl shadow-indigo-600/20 flex flex-col md:flex-row items-center gap-6">
-                   <div className="w-16 h-16 rounded-2xl bg-white/20 flex items-center justify-center shrink-0 backdrop-blur-md">
-                      <Sparkles size={32} />
+                {/* Initiatives + Stories */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <Card>
+                    <CardHeader title="Strategic Initiatives" sub="Global Council Execution Tracking" />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-6 mt-2">
+                      {d.initiatives.map((it) => (
+                        <div key={it.name}>
+                          <div className="flex items-center justify-between mb-2.5 gap-2">
+                            <span className="text-[11px] font-black text-slate-700 truncate">{it.name}</span>
+                            <span className="text-[11px] font-black text-slate-400">{it.progress}%</span>
+                          </div>
+                          <ProgressBar value={it.progress} tone={statusColor(it.status)} thick />
+                        </div>
+                      ))}
+                    </div>
+                  </Card>
+
+                  <Card>
+                    <CardHeader title="Management Stories" sub="Latest Council Thread Updates" />
+                    <div className="space-y-6">
+                      {dashData.stories.slice(0, 3).map((s) => (
+                        <div key={s.title} className="border-l-4 pl-5 py-1" style={{ borderColor: colorMap[s.sentiment === "Positive" ? "emerald" : s.sentiment === "Watch" ? "amber" : "red"].bar }}>
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-[11px] font-black text-slate-800">{s.title}</span>
+                            <Badge label={s.sentiment} tone={s.sentiment === "Positive" ? "emerald" : s.sentiment === "Watch" ? "amber" : "red"} />
+                          </div>
+                          <p className="text-[10px] text-slate-500 mt-1.5 leading-relaxed font-medium">{s.summary}</p>
+                          <div className="text-[9px] text-slate-400 font-bold uppercase mt-2">{s.thread} • {s.time}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </Card>
+                </div>
+
+                {/* Bot Insight */}
+                <div className="bg-[#0c1430] rounded-[32px] p-8 text-white shadow-2xl relative overflow-hidden group">
+                   <div className="absolute top-0 right-0 p-12 opacity-5 scale-150 rotate-12 transition-transform group-hover:scale-175 group-hover:rotate-0">
+                      <Sparkles size={160} />
                    </div>
-                   <div className="flex-1">
-                      <div className="text-[10px] font-black uppercase tracking-widest text-indigo-200 mb-1">Analyst Signal</div>
-                      <div className="text-sm font-bold leading-relaxed">
-                        The {d.label} revenue is trending {d.revenue > d.revenueTarget ? 'up' : 'down'} vs budget. 
-                        AI detects a high performance in the {d.departments[0]?.name} segment. 
-                        Confidence: {((d.insights?.[0]?.confidence || 0.88) * 100).toFixed(0)}%.
+                   <div className="relative flex flex-col md:flex-row items-center gap-8">
+                      <div className="w-20 h-20 rounded-3xl bg-indigo-600 flex items-center justify-center shrink-0 shadow-xl shadow-indigo-600/40">
+                         <Bot size={40} />
                       </div>
+                      <div className="flex-1">
+                         <div className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-400 mb-2">OneIBC AI Executive Insight</div>
+                         <div className="flex flex-col gap-2">
+                            {d.narrative.map((n, i) => (
+                               <div key={i} className="text-base font-bold text-slate-100 flex gap-3">
+                                  <span className="text-indigo-500 font-black shrink-0">{i+1}.</span>
+                                  <span>{n}</span>
+                               </div>
+                            ))}
+                         </div>
+                      </div>
+                      <button onClick={() => setAIChatOpen(true)} className="px-8 py-5 bg-indigo-600 text-white rounded-2xl font-black text-xs hover:bg-indigo-500 transition-all shrink-0 border border-white/10 shadow-lg hover:shadow-indigo-600/20 active:scale-95">
+                         Start Agentic Chat
+                      </button>
                    </div>
-                   <button onClick={() => setAIChatOpen(true)} className="px-6 py-3 bg-white text-indigo-600 rounded-2xl font-black text-xs hover:bg-slate-50 transition-colors shrink-0">
-                      Deep Dive Analysis
-                   </button>
                 </div>
              </div>
           ) : view === "operations" ? (
@@ -304,15 +399,15 @@ export default function BODDashboard({ initialData }: Props) {
                    <CardHeader title="Fulfillment Plants (Centers)" sub="Operational performance by Location" />
                    <div className="space-y-4">
                       {d.operations?.serviceCenters.map(sc => (
-                        <div key={sc.name} className="flex items-center justify-between p-5 rounded-3xl bg-slate-50 border border-slate-100 hover:border-indigo-200 transition-colors">
+                        <div key={sc.name} className="flex items-center justify-between p-6 rounded-3xl bg-slate-50 border border-slate-100 hover:border-indigo-200 transition-all">
                            <div>
-                              <div className="text-sm font-black text-slate-800">{sc.name}</div>
+                              <div className="text-base font-black text-slate-800">{sc.name}</div>
                               <Badge label={sc.type} tone={sc.type === 'HQ' ? 'indigo' : 'slate'} />
                            </div>
                            <div className="text-right">
-                              <div className="text-base font-black text-slate-800">${sc.actual}M</div>
+                              <div className="text-xl font-black text-slate-800">${sc.actual}M</div>
                               <div className={`text-[10px] font-bold ${sc.actual > sc.target ? 'text-red-500' : 'text-emerald-500'}`}>
-                                Var vs Target: {sc.actual > sc.target ? '+' : '-'}${Math.abs(sc.actual - sc.target).toFixed(2)}M
+                                Var: {sc.actual > sc.target ? '+' : '-'}${Math.abs(sc.actual - sc.target).toFixed(2)}M
                               </div>
                            </div>
                         </div>
@@ -321,19 +416,19 @@ export default function BODDashboard({ initialData }: Props) {
                 </Card>
                 <Card>
                    <CardHeader title="Supplier & Bank Ecosystem" sub="Financial Integrity & Spend Management" />
-                   <div className="space-y-6">
+                   <div className="space-y-8">
                       {d.operations?.suppliers.map(sup => (
-                        <div key={sup.name} className="p-4 rounded-3xl border border-slate-50 shadow-sm">
-                           <div className="flex justify-between items-center mb-3">
-                              <div className="text-xs font-black text-slate-800 flex items-center gap-2">
-                                 {sup.name} <span className="text-[9px] text-slate-400 font-bold bg-slate-100 px-1.5 py-0.5 rounded-md uppercase">{sup.category}</span>
+                        <div key={sup.name} className="p-5 rounded-3xl border border-slate-50 shadow-sm hover:shadow-md transition-shadow">
+                           <div className="flex justify-between items-center mb-4">
+                              <div className="text-sm font-black text-slate-800 flex items-center gap-3">
+                                 {sup.name} <span className="text-[10px] text-slate-400 font-bold bg-slate-100 px-2.5 py-1 rounded-lg uppercase tracking-wider">{sup.category}</span>
                               </div>
-                              <div className="text-xs font-black text-indigo-600">{sup.performance}% Performance</div>
+                              <div className="text-sm font-black text-indigo-600">{sup.performance}% Efficiency</div>
                            </div>
-                           <ProgressBar value={sup.performance} tone={sup.performance > 90 ? "emerald" : "amber"} />
-                           <div className="mt-2 flex justify-between text-[10px] text-slate-400 font-bold">
+                           <ProgressBar value={sup.performance} tone={sup.performance > 90 ? "emerald" : "amber"} thick />
+                           <div className="mt-3 flex justify-between text-[11px] text-slate-400 font-bold uppercase tracking-wide">
                               <span>Monthly Volume: ${sup.spend}M</span>
-                              <span>SLA Status: Optimal</span>
+                              <span>SLA Status: On Track</span>
                            </div>
                         </div>
                       ))}
@@ -344,18 +439,18 @@ export default function BODDashboard({ initialData }: Props) {
              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <Card className="flex flex-col">
                    <CardHeader title="CEO Executive P&L" sub="Standard P&L Breakdown (Board View)" />
-                   <div className="flex-1 overflow-y-auto space-y-1">
-                      <div className="grid grid-cols-4 px-4 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-50 mb-2">
+                   <div className="flex-1 overflow-y-auto space-y-1 custom-scrollbar">
+                      <div className="grid grid-cols-4 px-5 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] border-b border-slate-50 mb-3">
                          <div>Account</div>
                          <div className="text-right">Actual</div>
                          <div className="text-right">Budget</div>
                          <div className="text-right">Var</div>
                       </div>
                       {d.capital?.pl.map((line, i) => (
-                        <div key={i} className={`grid grid-cols-4 px-4 py-4 text-xs font-bold rounded-2xl ${i % 2 === 0 ? 'bg-slate-50/50' : 'bg-white'}`}>
+                        <div key={i} className={`grid grid-cols-4 px-5 py-5 text-[13px] font-bold rounded-2xl transition-colors ${i % 2 === 0 ? 'bg-slate-50/50 hover:bg-slate-100/50' : 'bg-white hover:bg-slate-50'}`}>
                            <div className="text-slate-800">{line.item}</div>
                            <div className="text-right">${line.actual}M</div>
-                           <div className="text-right text-slate-400">${line.budget}M</div>
+                           <div className="text-right text-slate-400 font-medium">${line.budget}M</div>
                            <div className={`text-right font-black ${line.variance >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
                               {line.variance > 0 ? '+' : ''}{line.variance}M
                            </div>
@@ -365,20 +460,21 @@ export default function BODDashboard({ initialData }: Props) {
                 </Card>
                 <Card>
                    <CardHeader title="Cash Flow Dynamics" sub="Operational Liquidity Health" />
-                   <div className="h-64 mb-8">
+                   <div className="h-72 mb-10">
                       <ResponsiveContainer width="100%" height="100%">
                         <LineChart data={d.capital?.cashFlow}>
                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f8fafc" />
-                           <Tooltip contentStyle={{borderRadius: '16px'}} />
-                           <Line type="stepAfter" dataKey="net" stroke="#6366f1" strokeWidth={5} dot={{ r: 8, fill: '#6366f1', strokeWidth: 4, stroke: '#fff' }} />
+                           <XAxis dataKey="category" axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 700, fill: '#94a3b8'}} />
+                           <Tooltip contentStyle={{borderRadius: '20px', border: 'none'}} />
+                           <Line type="stepAfter" dataKey="net" stroke="#6366f1" strokeWidth={6} dot={{ r: 10, fill: '#6366f1', strokeWidth: 5, stroke: '#fff' }} />
                         </LineChart>
                       </ResponsiveContainer>
                    </div>
-                   <div className="grid grid-cols-3 gap-3">
+                   <div className="grid grid-cols-3 gap-4">
                       {d.capital?.cashFlow.map(cf => (
-                        <div key={cf.category} className="p-4 bg-slate-50 rounded-3xl border border-slate-100 transition-transform hover:scale-105">
-                           <div className="text-[10px] text-slate-400 font-bold uppercase mb-1 truncate">{cf.category}</div>
-                           <div className={`text-sm font-black ${cf.net >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                        <div key={cf.category} className="p-6 bg-slate-50 rounded-[2rem] border border-slate-100 transition-all hover:scale-105 hover:bg-white hover:border-indigo-100">
+                           <div className="text-[10px] text-slate-400 font-bold uppercase mb-2 tracking-widest truncate">{cf.category}</div>
+                           <div className={`text-lg font-black ${cf.net >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
                               ${cf.net}M
                            </div>
                         </div>
@@ -390,41 +486,41 @@ export default function BODDashboard({ initialData }: Props) {
              <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                    {d.insights?.map((ins, i) => (
-                      <Card key={i} className="flex flex-col justify-between hover:border-indigo-400 border-2 border-transparent transition-all">
+                      <Card key={i} className="flex flex-col justify-between hover:border-indigo-400 border-2 border-transparent transition-all p-6">
                          <div>
-                            <div className="flex justify-between items-start mb-4">
+                            <div className="flex justify-between items-start mb-5">
                                <Badge label={ins.category} tone={ins.category === "Risk" ? "red" : "indigo"} />
-                               <div className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full uppercase">
-                                  {Math.round(ins.confidence * 100)}% Match
+                               <div className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-4 py-1.5 rounded-full uppercase tracking-wider">
+                                  {Math.round(ins.confidence * 100)}% Confidence
                                </div>
                             </div>
-                            <h3 className="text-sm font-black text-slate-800 mb-3">{ins.signal}</h3>
-                            <p className="text-xs text-slate-500 leading-relaxed font-medium mb-6">{ins.description}</p>
+                            <h3 className="text-base font-black text-slate-800 mb-4">{ins.signal}</h3>
+                            <p className="text-sm text-slate-500 leading-relaxed font-medium mb-8">{ins.description}</p>
                          </div>
-                         <div className="flex items-center justify-between pt-4 border-t border-slate-50">
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Impact Factor</span>
-                            <span className={`text-[10px] font-black px-3 py-1 rounded-xl uppercase ${ins.impact === "High" ? "bg-red-50 text-red-600" : "bg-amber-50 text-amber-600"}`}>
-                               {ins.impact} Risk
+                         <div className="flex items-center justify-between pt-6 border-t border-slate-50">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Impact Score</span>
+                            <span className={`text-[11px] font-black px-4 py-1.5 rounded-xl uppercase ${ins.impact === "High" ? "bg-red-50 text-red-600" : "bg-amber-50 text-amber-600"}`}>
+                               {ins.impact} IMPACT
                             </span>
                          </div>
                       </Card>
                    ))}
                 </div>
                 
-                <Card className="bg-[#1e293b] text-white overflow-hidden relative">
-                   <div className="absolute top-0 right-0 p-8 opacity-10">
-                      <Sparkles size={120} />
+                <Card className="bg-[#1e293b] text-white overflow-hidden relative p-8">
+                   <div className="absolute top-0 right-0 p-12 opacity-15 scale-150 rotate-12">
+                      <Sparkles size={160} />
                    </div>
-                   <div className="relative p-2">
-                      <CardHeader title="AI Forecast Intelligence" sub="Predicted variance based on Salesforce Pipeline" />
-                      <div className="flex flex-col md:flex-row gap-8 items-center mt-4">
-                         <div className="text-4xl font-black text-emerald-400">+12%</div>
-                         <p className="text-sm font-medium text-slate-300 leading-relaxed">
-                            Based on high-confidence leads in the HK & SG pricebooks, OneIBC is projected to exceed the {d.label} Revenue target by $1.2M.
-                            Wait-time for KYC Fulfillment at Vietnam HQ has improved by 8% this period.
+                   <div className="relative">
+                      <CardHeader title="AI Forecast Intelligence" sub="Sensitivity analysis based on current Salesforce pipeline strength" />
+                      <div className="flex flex-col md:flex-row gap-12 items-center mt-6">
+                         <div className="text-5xl font-black text-emerald-400 drop-shadow-lg">+12.4%</div>
+                         <p className="text-base font-bold text-slate-300 leading-relaxed max-w-2xl">
+                            Pipeline analysis confirms a potential 12.4% upside to the {d.label} revenue targets. This is primarily driven by 
+                            the Service Bundle pricebook performance in Vietnam and Singapore fulfillment centers.
                          </p>
-                         <button className="px-6 py-3 rounded-2xl bg-indigo-600 text-white font-black text-xs hover:bg-indigo-500 transition-all whitespace-nowrap">
-                            Run Sensitivity Analysis
+                         <button className="px-10 py-5 rounded-3xl bg-indigo-600 text-white font-black text-xs hover:bg-indigo-500 transition-all shadow-xl shadow-indigo-600/20 whitespace-nowrap active:scale-95">
+                            Simulate Best Case
                          </button>
                       </div>
                    </div>
@@ -432,26 +528,26 @@ export default function BODDashboard({ initialData }: Props) {
              </div>
           ) : (
              <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <Card className="max-w-4xl mx-auto">
+                <Card className="max-w-4xl mx-auto p-8">
                    <CardHeader 
                     title="Management Reports Library" 
                     sub="MIS Governance Tier-1 Document Stack" 
-                    right={<div className="p-2 bg-slate-100 rounded-xl"><Search size={16} className="text-slate-400" /></div>}
+                    right={<div className="p-3 bg-slate-100 rounded-2xl"><Search size={20} className="text-slate-400" /></div>}
                    />
-                   <div className="divide-y divide-slate-50">
+                   <div className="divide-y divide-slate-100 mt-6">
                       {dashData.reports.map((r) => (
-                        <div key={r.name} className="flex items-center justify-between py-5 group cursor-pointer hover:px-2 transition-all">
-                           <div className="flex items-center gap-4 min-w-0">
-                              <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center group-hover:bg-indigo-50 transition-colors">
-                                 <FileText size={20} className="text-slate-400 group-hover:text-indigo-600 transition-colors" />
+                        <div key={r.name} className="flex items-center justify-between py-6 group cursor-pointer hover:px-4 transition-all rounded-2xl">
+                           <div className="flex items-center gap-5 min-w-0">
+                              <div className="w-14 h-14 rounded-2xl bg-slate-50 flex items-center justify-center group-hover:bg-indigo-50 transition-colors">
+                                 <FileText size={24} className="text-slate-400 group-hover:text-indigo-600 transition-colors" />
                               </div>
                               <div className="min-w-0">
-                                 <div className="text-sm font-black text-slate-800 truncate">{r.name}</div>
-                                 <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Generated {r.updated} • OneIBC MIS</div>
+                                 <div className="text-[15px] font-black text-slate-800 truncate">{r.name}</div>
+                                 <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1.5">Automated MIS • {r.updated}</div>
                               </div>
                            </div>
-                           <button className="w-10 h-10 rounded-full flex items-center justify-center text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 transition-all">
-                              <Download size={20} />
+                           <button className="w-12 h-12 rounded-full flex items-center justify-center text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 transition-all shadow-sm">
+                              <Download size={22} />
                            </button>
                         </div>
                       ))}
@@ -471,9 +567,10 @@ export default function BODDashboard({ initialData }: Props) {
 
       {/* TOAST */}
       {toast && (
-        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-[11px] font-black px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-4 z-50 animate-in fade-in slide-in-from-bottom-2">
+        <div className="fixed bottom-10 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[11px] font-black px-8 py-4 rounded-[2rem] shadow-2xl flex items-center gap-5 z-50 animate-in fade-in zoom-in slide-in-from-bottom-5">
+          <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
           {toast}
-          <button onClick={() => setToast(null)} className="text-slate-500 hover:text-white"><X size={14} /></button>
+          <button onClick={() => setToast(null)} className="text-slate-500 hover:text-white transition-colors ml-2"><X size={16} /></button>
         </div>
       )}
     </div>
