@@ -82,6 +82,12 @@ export const STATIC_DASHBOARD_DATA: DashboardData = {
         { name: "Service & Formation", value: 9.5, pct: 27 },
         { name: "ATA", value: 4.2, pct: 12 },
       ],
+      revenueForecast: 105.0,
+      gpForecast: 34.0,
+      ebitdaForecast: 17.5,
+      operations: { serviceCenters: [], suppliers: [] },
+      capital: { pl: [], cashFlow: [] },
+      insights: []
     },
     {
       period: "may",
@@ -152,6 +158,12 @@ export const STATIC_DASHBOARD_DATA: DashboardData = {
         { name: "Service & Formation", value: 11.6, pct: 27 },
         { name: "ATA", value: 5.1, pct: 12 },
       ],
+      revenueForecast: 120.0,
+      gpForecast: 40.0,
+      ebitdaForecast: 20.5,
+      operations: { serviceCenters: [], suppliers: [] },
+      capital: { pl: [], cashFlow: [] },
+      insights: []
     },
     {
       period: "jun",
@@ -222,6 +234,42 @@ export const STATIC_DASHBOARD_DATA: DashboardData = {
         { name: "Service & Formation", value: 12.4, pct: 27 },
         { name: "ATA", value: 5.5, pct: 12 },
       ],
+      revenueForecast: 135.0,
+      gpForecast: 44.5,
+      ebitdaForecast: 22.2,
+      operations: {
+        serviceCenters: [
+          { name: "Vietnam HQ", type: "HQ", cost: 2.5, actual: 2.8, target: 2.4 },
+          { name: "Singapore", type: "Fulfillment", cost: 1.2, actual: 1.1, target: 1.3 },
+          { name: "Hong Kong", type: "Fulfillment", cost: 1.5, actual: 1.7, target: 1.4 },
+          { name: "Global Procurement", type: "Procurement", cost: 0.8, actual: 0.9, target: 0.85 },
+        ],
+        suppliers: [
+          { name: "HSBC", category: "Bank", spend: 0.2, performance: 95 },
+          { name: "DBS", category: "Bank", spend: 0.15, performance: 92 },
+          { name: "Local Agent HK", category: "Agent", spend: 0.4, performance: 88 },
+          { name: "Local Agent BVI", category: "Agent", spend: 0.3, performance: 85 },
+        ]
+      },
+      capital: {
+        pl: [
+          { item: "Total Revenue", actual: 138.7, budget: 128.0, variance: 10.7 },
+          { item: "Cost of Services", actual: 92.8, budget: 85.0, variance: -7.8 },
+          { item: "Gross Profit", actual: 45.9, budget: 43.0, variance: 2.9 },
+          { item: "Operating Expenses", actual: 23.1, budget: 21.0, variance: -2.1 },
+          { item: "EBITDA", actual: 22.8, budget: 22.0, variance: 0.8 },
+        ],
+        cashFlow: [
+          { category: "Operating Activities", inflow: 145.0, outflow: 118.0, net: 27.0 },
+          { category: "Investing Activities", inflow: 2.0, outflow: 15.0, net: -13.0 },
+          { category: "Financing Activities", inflow: 10.0, outflow: 5.0, net: 5.0 },
+        ]
+      },
+      insights: [
+        { signal: "KYC Delay Alert", description: "SLA for HK onboarding dropped by 15% due to bank requirement changes.", category: "Operational", confidence: 0.92, impact: "High" },
+        { signal: "Margin Compression", description: "BVI Agent costs increased by 5%, impacting ATA segment net margin.", category: "Financial", confidence: 0.85, impact: "Medium" },
+        { signal: "Retention Improvement", description: "Renewals for S&F HK segment up by 8% vs forecast.", category: "Financial", confidence: 0.88, impact: "High" },
+      ]
     },
   ],
 

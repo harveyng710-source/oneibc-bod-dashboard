@@ -6,19 +6,20 @@ export type Severity = "Low" | "Medium" | "High";
 export type Trend = "up" | "down" | "flat";
 export type StatusType = "On Track" | "At Risk" | "Delayed" | "Critical" | "Good";
 export type SentimentType = "Positive" | "Watch" | "Action";
+export type ComparisonMode = "budget" | "forecast";
 export type Period = "apr" | "may" | "jun" | string;
 
 /** Single sub-KPI inside a scorecard pillar */
 export interface ScorecardSubKPI {
   name: string;
-  weight: number; // 0–1
-  value: number;  // 0–100
+  weight: number; 
+  value: number;  
 }
 
 /** A pillar (Financial, Customer, Operational, Technology) */
 export interface ScorecardPillar {
-  score: number;  // 0–100
-  trend: number;  // positive = improved vs prev period
+  score: number;  
+  trend: number;  
   subs: ScorecardSubKPI[];
 }
 
@@ -63,21 +64,24 @@ export interface Department {
 
 /** Data snapshot for one reporting period */
 export interface PeriodData {
-  period: string;          // e.g. "apr"
-  label: string;           // e.g. "Apr 2026 (MTD)"
-  compareLabel: string;    // e.g. "Mar 2026 (MTD)"
+  period: string;          
+  label: string;           
+  compareLabel: string;    
 
-  // KPIs
+  // KPIs (Actuals)
   revenue: number;
-  revenueTarget: number;
+  revenueTarget: number; // Default (Budget)
+  revenueForecast: number; // For Forecast comparison
   revenueSpark: number[];
 
   gp: number;
   gpTarget: number;
+  gpForecast: number;
   gpSpark: number[];
 
   ebitda: number;
   ebitdaTarget: number;
+  ebitdaForecast: number;
   ebitdaSpark: number[];
 
   forecastBase: number;
@@ -90,6 +94,23 @@ export interface PeriodData {
   initiatives: Initiative[];
   narrative: string[];
   departments: Department[];
+
+  // --- NEW FP&A EXTENSIONS ---
+  operations?: {
+    serviceCenters: { name: string; type: "HQ" | "Fulfillment" | "Procurement"; cost: number; actual: number; target: number }[];
+    suppliers: { name: string; category: "Bank" | "Agent"; spend: number; performance: number }[];
+  };
+  capital?: {
+    pl: { item: string; actual: number; budget: number; variance: number }[];
+    cashFlow: { category: string; inflow: number; outflow: number; net: number }[];
+  };
+  insights?: {
+    signal: string;
+    description: string;
+    category: "Risk" | "Operational" | "Financial";
+    confidence: number; // 0-1
+    impact: "High" | "Medium" | "Low";
+  }[];
 }
 
 /** Management Story */

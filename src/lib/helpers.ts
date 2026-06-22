@@ -38,13 +38,10 @@ export const colorMap: Record<string, { bg: string; text: string; dot: string; b
 
 /** Nav items */
 export const NAV = [
-  { id: "overview",    label: "BOD Overview",        icon: "LayoutDashboard" },
-  { id: "health",      label: "Strategic Health",     icon: "Activity" },
-  { id: "risk",        label: "Enterprise Risk",      icon: "AlertTriangle" },
-  { id: "financials",  label: "Financials",           icon: "Wallet" },
-  { id: "forecast",    label: "Forecast & Outlook",   icon: "TrendingUp" },
-  { id: "initiatives", label: "Strategic Initiatives", icon: "Target" },
-  { id: "stories",     label: "Management Stories",   icon: "MessageSquare" },
+  { id: "overview",    label: "Overview (Pulse)",     icon: "LayoutDashboard" },
+  { id: "operations",  label: "Operations (Centers)", icon: "Activity" },
+  { id: "capital",     label: "Capital (Financials)", icon: "Wallet" },
+  { id: "insight",     label: "Insight Signals",      icon: "Sparkles" },
   { id: "reports",     label: "Reports Library",      icon: "FileText" },
 ] as const;
 
