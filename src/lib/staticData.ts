@@ -253,12 +253,12 @@ export const STATIC_DASHBOARD_DATA: DashboardData = {
         workforce: {
           headcount: 210, utilization: 84, attrition: 13, costPerHead: 81,
           teams: [
-            { team: "RM + Bank",  headcount: 45, utilization: 82, attrition: 12, costPerHead: 95, totalCost: 4.3, revenueContribution: 16.5, evm: { bac: 5.0, pv: 2.5, ev: 2.6,  ac: 2.4  } },
-            { team: "S&F",        headcount: 60, utilization: 88, attrition: 15, costPerHead: 80, totalCost: 4.8, revenueContribution: 12.4, evm: { bac: 5.5, pv: 2.8, ev: 2.6,  ac: 2.9  } },
-            { team: "Renew",      headcount: 35, utilization: 79, attrition: 10, costPerHead: 78, totalCost: 2.7, revenueContribution: 11.5, evm: { bac: 3.0, pv: 1.5, ev: 1.55, ac: 1.45 } },
-            { team: "ATA",        headcount: 25, utilization: 84, attrition: 18, costPerHead: 70, totalCost: 1.8, revenueContribution: 5.5,  evm: { bac: 2.2, pv: 1.1, ev: 1.0,  ac: 1.2  } },
-            { team: "Marketing",  headcount: 18, utilization: 75, attrition: 9,  costPerHead: 85, totalCost: 1.5, revenueContribution: 0,    evm: { bac: 1.8, pv: 0.9, ev: 0.95, ac: 0.88 } },
-            { team: "Ops",        headcount: 27, utilization: 90, attrition: 11, costPerHead: 72, totalCost: 1.9, revenueContribution: 0,    evm: { bac: 2.4, pv: 1.2, ev: 1.18, ac: 1.25 } },
+            { team: "RM + Bank",  type: "revenue", headcount: 45, utilization: 82, attrition: 12, costPerHead: 95, totalCost: 4.3, revenueContribution: 16.5, evm: { bac: 5.0, pv: 2.5, ev: 2.6,  ac: 2.4  } },
+            { team: "S&F",        type: "revenue", headcount: 60, utilization: 88, attrition: 15, costPerHead: 80, totalCost: 4.8, revenueContribution: 12.4, evm: { bac: 5.5, pv: 2.8, ev: 2.6,  ac: 2.9  } },
+            { team: "Renew",      type: "revenue", headcount: 35, utilization: 79, attrition: 10, costPerHead: 78, totalCost: 2.7, revenueContribution: 11.5, evm: { bac: 3.0, pv: 1.5, ev: 1.55, ac: 1.45 } },
+            { team: "ATA",        type: "revenue", headcount: 25, utilization: 84, attrition: 18, costPerHead: 70, totalCost: 1.8, revenueContribution: 5.5,  evm: { bac: 2.2, pv: 1.1, ev: 1.0,  ac: 1.2  } },
+            { team: "Marketing",  type: "support", headcount: 18, utilization: 75, attrition: 9,  costPerHead: 85, totalCost: 1.5, revenueContribution: 0,    evm: { bac: 1.8, pv: 0.9, ev: 0.95, ac: 0.88 } },
+            { team: "Ops",        type: "support", headcount: 27, utilization: 90, attrition: 11, costPerHead: 72, totalCost: 1.9, revenueContribution: 0,    evm: { bac: 2.4, pv: 1.2, ev: 1.18, ac: 1.25 } },
           ],
         },
       },
@@ -349,4 +349,65 @@ export const STATIC_DASHBOARD_DATA: DashboardData = {
     { name: "MIS Architecture Brief", updated: "3 weeks ago" },
     { name: "Enterprise Operating Models — Full BOD Deck", updated: "3 weeks ago" },
   ],
+
+  // ── FP&A model (from OneIBC GP Forecast Masterworkbook v3.1, values in $M) ──
+  fpa: {
+    q2TargetGP: 1.7978,
+    teams: [
+      {
+        team: "RM + Bank", type: "revenue", q2Target: 0.2262, posteriorRate: 0.53005,
+        bayesianForecast: 0.1199, pipelineForecast: 0.1280, confidence: "High",
+        monthly: [
+          { month: "M1", gpTarget: 0.0912, gpActual: 0.0343, revenue: 0.0506 },
+          { month: "M2", gpTarget: 0.0992, gpActual: 0.0564, revenue: 0.0846 },
+          { month: "M3", gpTarget: 0.0992, gpActual: 0.0560, revenue: 0.0833 },
+          { month: "M4", gpTarget: 0.0754, gpActual: 0.0362, revenue: 0.0596 },
+          { month: "M5", gpTarget: 0.0754, gpActual: 0.0362, revenue: 0.0537 },
+          { month: "M6", gpTarget: 0.0754, gpActual: null, revenue: null },
+        ],
+      },
+      {
+        team: "S&F", type: "revenue", q2Target: 0.4652, posteriorRate: 0.53065,
+        bayesianForecast: 0.2468, pipelineForecast: 0.2350, confidence: "Medium",
+        monthly: [
+          { month: "M1", gpTarget: 0.0665, gpActual: 0.0326, revenue: 0.0456 },
+          { month: "M2", gpTarget: 0.0665, gpActual: 0.0674, revenue: 0.0945 },
+          { month: "M3", gpTarget: 0.0665, gpActual: 0.0392, revenue: 0.0597 },
+          { month: "M4", gpTarget: 0.0665, gpActual: 0.0234, revenue: 0.0302 },
+          { month: "M5", gpTarget: 0.1045, gpActual: 0.0287, revenue: 0.0396 },
+          { month: "M6", gpTarget: 0.0950, gpActual: null, revenue: null },
+        ],
+      },
+      {
+        team: "Renew", type: "revenue", q2Target: 0.7101, posteriorRate: 0.694,
+        bayesianForecast: 0.4928, pipelineForecast: 0.5100, confidence: "Medium",
+        monthly: [
+          { month: "M1", gpTarget: 0.1759, gpActual: 0.2344, revenue: 0.4139 },
+          { month: "M2", gpTarget: 0.1791, gpActual: 0.0925, revenue: 0.1398 },
+          { month: "M3", gpTarget: 0.0973, gpActual: 0.1118, revenue: 0.1717 },
+          { month: "M4", gpTarget: 0.1433, gpActual: 0.0629, revenue: 0.0897 },
+          { month: "M5", gpTarget: 0.2064, gpActual: 0.1392, revenue: 0.2343 },
+          { month: "M6", gpTarget: 0.1524, gpActual: null, revenue: null },
+        ],
+      },
+      {
+        team: "ATA", type: "revenue", q2Target: 0.3963, posteriorRate: 0.6971,
+        bayesianForecast: 0.2762, pipelineForecast: 0.2680, confidence: "Medium",
+        monthly: [
+          { month: "M1", gpTarget: 0.0622, gpActual: 0.0736, revenue: 0.1088 },
+          { month: "M2", gpTarget: 0.0594, gpActual: 0.0493, revenue: 0.0633 },
+          { month: "M3", gpTarget: 0.0860, gpActual: 0.1015, revenue: 0.1349 },
+          { month: "M4", gpTarget: 0.0891, gpActual: 0.0446, revenue: 0.0627 },
+          { month: "M5", gpTarget: 0.0898, gpActual: 0.0690, revenue: 0.0845 },
+          { month: "M6", gpTarget: 0.0879, gpActual: null, revenue: null },
+        ],
+      },
+    ],
+    scenarios: [
+      { name: "P20 · Conservative", prob: 0.20, gpForecast: 0.670, achievement: 0.5312, revenueEst: 0.9955 },
+      { name: "P50 · Base Case",    prob: 0.50, gpForecast: 0.740, achievement: 0.5867, revenueEst: 1.0996 },
+      { name: "P80 · Stretch",      prob: 0.20, gpForecast: 0.850, achievement: 0.6739, revenueEst: 1.2630 },
+    ],
+    ci: { p80Low: 0.629, p80High: 0.851, p95Low: 0.555, p95High: 0.925 },
+  },
 };

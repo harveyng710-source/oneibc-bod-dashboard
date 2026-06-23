@@ -350,6 +350,7 @@ function buildFromRows(rows: RawRow[]): DashboardData {
         if (!teamName) break;
         const entry = {
           team: teamName,
+          type: (str(row.type).toLowerCase() === "support" ? "support" : "revenue") as "revenue" | "support",
           headcount: num(row.headcount ?? row.value),
           utilization: num(row.utilization ?? row.pct),
           attrition: num(row.attrition),

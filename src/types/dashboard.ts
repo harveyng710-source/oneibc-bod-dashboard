@@ -77,12 +77,16 @@ export interface Department {
   pct: number;   // percentage of total
 }
 
+/** Revenue-generating vs support team (drives EVM interpretation). */
+export type TeamType = "revenue" | "support";
+
 /**
  * Per-team workforce + cost + EVM block.
  * Teams: RM + Bank, S&F, Renew, ATA, Marketing, Ops, …
  */
 export interface TeamWorkforce {
   team: string;
+  type: TeamType;             // revenue (EVM keyed to revenue KPI) vs support (standard EVM)
   headcount: number;
   utilization: number;        // % capacity utilised
   attrition: number;          // % annualised
@@ -90,6 +94,43 @@ export interface TeamWorkforce {
   totalCost: number;          // $M total people cost this period
   revenueContribution: number; // $M revenue/GP attributed to the team
   evm: EVMInput;              // team-level EVM (Phase 1 EVM tier 1)
+}
+
+/** One month of a team's GP/revenue actuals & target (from the FP&A workbook). */
+export interface TeamMonthly {
+  month: string;            // "M1".."M6"
+  gpTarget: number;         // $M
+  gpActual: number | null;  // $M (null = not yet closed)
+  revenue: number | null;   // $M
+}
+
+/** Per-team forecast combining the Bayesian (workbook) and Salesforce pipeline models. */
+export interface TeamForecast {
+  team: string;
+  type: TeamType;
+  q2Target: number;          // $M GP target for the quarter
+  posteriorRate: number;     // Bayesian posterior achievement rate (0..1)
+  bayesianForecast: number;  // $M = posteriorRate × q2Target (workbook model)
+  pipelineForecast: number;  // $M = Σ(median quote × stage %) — Salesforce export model
+  confidence: "High" | "Medium" | "Low";
+  monthly: TeamMonthly[];
+}
+
+/** Probabilistic scenario row (P20 / P50 / P80). */
+export interface ScenarioRow {
+  name: string;
+  prob: number;        // 0..1
+  gpForecast: number;  // $M
+  achievement: number; // 0..1
+  revenueEst: number;  // $M
+}
+
+/** Workbook-derived FP&A analytics shared across the dashboard. */
+export interface FpaModel {
+  q2TargetGP: number;        // $M
+  teams: TeamForecast[];
+  scenarios: ScenarioRow[];
+  ci: { p80Low: number; p80High: number; p95Low: number; p95High: number }; // $M GP
 }
 
 /** Data snapshot for one reporting period */
@@ -195,6 +236,8 @@ export interface DashboardData {
   councils: Council[];
   structuralRisks: StructuralRisk[];
   reports: Report[];
+  /** Workbook-derived FP&A analytics (forecasts, scenarios, per-team monthly). */
+  fpa?: FpaModel;
   lastRefreshed?: string;
   source?: "csv" | "google_sheets" | "static";
 }
