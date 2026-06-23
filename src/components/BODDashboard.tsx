@@ -9,7 +9,7 @@ import { useState, useCallback, useRef, Fragment } from "react";
 import { createPortal } from "react-dom";
 import {
   Activity, Wallet, TrendingUp, Target,
-  FileText, ArrowUp, ArrowDown, Minus, Building2, Sparkles, Bot, Download, Info, MessageSquarePlus, Settings,
+  FileText, ArrowUp, ArrowDown, Minus, Building2, Sparkles, Bot, Download, Info, MessageSquarePlus, Settings, Eye, X,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
@@ -218,6 +218,7 @@ export default function BODDashboard({ initialData }: Props) {
   const [aiChatOpen, setAIChatOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [reportComments, setReportComments] = useState<Record<string, string>>({});
+  const [previewReport, setPreviewReport] = useState<string | null>(null);
 
   const d: PeriodData = dashData.periods[periodIdx] ?? dashData.periods[0];
   
@@ -1388,9 +1389,14 @@ export default function BODDashboard({ initialData }: Props) {
                                     </div>
                                  </div>
                               </div>
-                              <button className="w-12 h-12 rounded-full flex items-center justify-center text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 transition-all shrink-0">
-                                 <Download size={22} />
-                              </button>
+                              <div className="flex items-center gap-1 shrink-0">
+                                 <button onClick={() => setPreviewReport(r.name)} title="Preview" className="px-3 h-10 rounded-xl flex items-center gap-1.5 text-[11px] font-black text-indigo-600 bg-indigo-50 hover:bg-indigo-100 transition-all">
+                                    <Eye size={16} /> Preview
+                                 </button>
+                                 <button title="Download" className="w-10 h-10 rounded-full flex items-center justify-center text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 transition-all">
+                                    <Download size={20} />
+                                 </button>
+                              </div>
                            </div>
 
                            {needsComment ? (
@@ -1428,6 +1434,68 @@ export default function BODDashboard({ initialData }: Props) {
       </div>
 
       <AIChatPanel currentData={d} isOpen={aiChatOpen} onClose={() => setAIChatOpen(false)} />
+
+      {/* Report preview modal */}
+      {previewReport && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm no-print" onClick={() => setPreviewReport(null)}>
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="sticky top-0 bg-white border-b border-slate-100 px-6 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center shrink-0"><FileText size={18} className="text-indigo-600" /></div>
+                <div className="min-w-0">
+                  <div className="text-sm font-black text-slate-800 truncate">{previewReport}</div>
+                  <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Bản xem trước tự động · {d.label}</div>
+                </div>
+              </div>
+              <button onClick={() => setPreviewReport(null)} className="p-1.5 hover:bg-slate-100 rounded-lg shrink-0"><X size={18} className="text-slate-500" /></button>
+            </div>
+            <div className="p-6 space-y-5">
+              {(() => {
+                const n = previewReport.toLowerCase();
+                if ((n.includes("gross profit") || n.includes("gp")) && fpa) {
+                  return (
+                    <div>
+                      <p className="text-[12px] text-slate-500 font-medium mb-4">GP theo division (YTD, $M) — nguồn FP&A workbook.</p>
+                      <table className="w-full text-[12px]">
+                        <thead><tr className="text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-100"><th className="text-left py-2">Division</th><th className="text-right">GP Actual</th><th className="text-right">% đạt</th><th className="text-right">Forecast</th></tr></thead>
+                        <tbody className="divide-y divide-slate-50">
+                          {fpa.teams.map((t) => {
+                            const a = t.monthly.reduce((s, m) => s + (m.gpActual ?? 0), 0);
+                            const tg = t.monthly.filter((m) => m.gpActual !== null).reduce((s, m) => s + m.gpTarget, 0);
+                            const ach = tg > 0 ? (a / tg) * 100 : 0;
+                            return <tr key={t.team}><td className="py-2 font-black text-slate-700">{t.team}</td><td className="text-right font-bold">${fmt1(a)}M</td><td className={`text-right font-black ${ach >= 100 ? "text-emerald-600" : ach >= 80 ? "text-amber-600" : "text-red-500"}`}>{ach.toFixed(0)}%</td><td className="text-right text-indigo-600 font-bold">${fmt1(t.bayesianForecast)}M</td></tr>;
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  );
+                }
+                // Default: executive narrative + KPI snapshot
+                return (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-3 gap-3">
+                      {[{ l: "Revenue", a: d.revenue, t: revenueTarget }, { l: "Gross Profit", a: d.gp, t: gpTarget }, { l: "EBITDA", a: d.ebitda, t: ebitdaTarget }].map((m) => (
+                        <div key={m.l} className="bg-slate-50 rounded-2xl p-4 text-center">
+                          <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{m.l}</div>
+                          <div className="text-lg font-black text-slate-800">${fmt1(m.a)}M</div>
+                          <div className="text-[10px] text-slate-400 font-medium">{m.t > 0 ? ((m.a / m.t) * 100).toFixed(0) : 0}% đạt</div>
+                        </div>
+                      ))}
+                    </div>
+                    <div>
+                      <div className="text-[10px] font-black uppercase tracking-widest text-indigo-500 mb-2">Tóm tắt điều hành</div>
+                      <div className="space-y-2">
+                        {execBrief.map((b, i) => <p key={i} className="text-[13px] text-slate-600 leading-relaxed font-medium flex gap-2"><span className="text-indigo-500 font-black">{i + 1}.</span><span>{b}</span></p>)}
+                      </div>
+                    </div>
+                    <p className="text-[10px] text-slate-400 italic">Bản xem trước được sinh tự động từ dữ liệu dashboard. Bản chính thức export PDF từ tab Executive Briefing.</p>
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
 
       {toast && (
         <div className="fixed bottom-10 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[11px] font-black px-8 py-4 rounded-[2rem] shadow-2xl z-50 animate-in fade-in zoom-in slide-in-from-bottom-5">
