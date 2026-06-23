@@ -166,7 +166,7 @@ function generateAIResponse(input: string, data: PeriodData): string {
   if (query.includes("variance") || query.includes("revenue")) {
     const revVar = data.revenue - data.revenueTarget;
     const revVarPct = (revVar / data.revenueTarget) * 100;
-    return `Revenue for ${data.label} is $${data.revenue}M, which is ${fmt1(revVarPct)}% ${revVarPct >= 0 ? 'above' : 'below'} the budget of $${data.revenueTarget}M. The main driver is the Service & Formation segment in HK. Would you like a breakdown of the Pricebook contributors?`;
+    return `Revenue for ${data.label} is $${data.revenue}M, which is ${fmt1(revVarPct)}% ${revVarPct >= 0 ? 'above' : 'below'} the target of $${data.revenueTarget}M. The main driver is the Service & Formation segment in HK. Would you like a breakdown of the Pricebook contributors?`;
   }
 
   if (query.includes("kyc") || query.includes("risk") || query.includes("signal")) {

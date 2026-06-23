@@ -23,7 +23,7 @@ export const METRIC_DOCS: Record<string, MetricDoc> = {
   // ── KPI tài chính ───────────────────────────────────────────────────────
   revenue: {
     label: "Doanh thu (Revenue)",
-    what: "Tổng doanh thu thực hiện trong kỳ, đối chiếu với Budget hoặc Forecast.",
+    what: "Tổng doanh thu thực hiện trong kỳ, đối chiếu với Target hoặc Forecast.",
     logic: "Actual = tổng doanh thu ghi nhận. Delta% = (Actual − Target) / Target × 100.",
     dataFlow: "Salesforce (Closed-Won + Recurring) → Google Sheet (section=kpi, metric=revenue) → parser → dashboard.",
   },
@@ -46,6 +46,13 @@ export const METRIC_DOCS: Record<string, MetricDoc> = {
     dataFlow: "Sheet (section=kpi, metric=forecast_base & forecast_target) → parser → dashboard.",
   },
 
+  pipelineCoverage: {
+    label: "Pipeline Coverage",
+    what: "Tỷ lệ phủ pipeline so với mục tiêu doanh thu — chỉ báo sức khỏe RevOps đầu phễu.",
+    logic: "Lấy từ sub-KPI 'Pipeline Coverage Ratio' của trụ Customer trong scorecard.",
+    dataFlow: "Salesforce pipeline → Sheet (section=scorecard, pillar=customer) → parser → dashboard.",
+  },
+
   // ── Scorecard 4 trụ cột ─────────────────────────────────────────────────
   scorecard: {
     label: "Strategic Health Scorecard",
@@ -57,7 +64,7 @@ export const METRIC_DOCS: Record<string, MetricDoc> = {
   // ── Variance / Chart ────────────────────────────────────────────────────
   variance: {
     label: "Variance Intelligence",
-    what: "Độ lệch doanh thu thực tế so với Budget/Forecast theo từng quý.",
+    what: "Độ lệch doanh thu thực tế so với Target/Forecast theo từng quý.",
     logic: "Variance = Actual − Base. Hiển thị Actual (đường), Base & Target (tham chiếu).",
     dataFlow: "Sheet (section=chart, q, actual, base, target) → parser → AreaChart.",
   },
@@ -72,7 +79,7 @@ export const METRIC_DOCS: Record<string, MetricDoc> = {
 
   // ── EVM (Earned Value Management) ───────────────────────────────────────
   bac: {
-    label: "BAC — Budget At Completion",
+    label: "BAC — Target At Completion",
     what: "Tổng ngân sách được phê duyệt cho team/initiative.",
     logic: "Giá trị kế hoạch gốc, không đổi trừ khi re-baseline.",
     dataFlow: "Kế hoạch ngân sách → Sheet (section=team_workforce/initiative_evm, bac) → parser.",

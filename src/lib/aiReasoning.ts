@@ -30,7 +30,7 @@ export function generateExecutiveBrief(d: PeriodData): string[] {
   // 1. Revenue vs budget headline
   const revVar = pct(d.revenue, d.revenueTarget);
   out.push(
-    `Doanh thu ${d.label} đạt $${f1(d.revenue)}M, ${revVar >= 0 ? "vượt" : "thấp hơn"} budget ` +
+    `Doanh thu ${d.label} đạt $${f1(d.revenue)}M, ${revVar >= 0 ? "vượt" : "thấp hơn"} target ` +
       `${Math.abs(revVar).toFixed(1)}% ($${f1(d.revenueTarget)}M). ` +
       `Biên gộp ${d.revenue > 0 ? ((d.gp / d.revenue) * 100).toFixed(1) : "0"}%.`
   );

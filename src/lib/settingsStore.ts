@@ -9,7 +9,10 @@
  */
 
 import { isDbEnabled, query } from "@/lib/db";
-import type { DashboardData } from "@/types/dashboard";
+import type { DashboardData, TeamWorkforce } from "@/types/dashboard";
+
+/** Editable HRMS fields per team, keyed by team name. */
+export type HrmsOverride = Partial<Pick<TeamWorkforce, "headcount" | "utilization" | "attrition" | "costPerHead" | "revenueContribution">>;
 
 // ── Settings shape ────────────────────────────────────────────────────────────
 
@@ -24,6 +27,8 @@ export interface AppSettings {
   sheetTemplate: { sheetId: string; sheetTab: string; csvUrl: string; mappingNote: string };
   /** Claude API key (stored as-is; masked when returned to the client). */
   apiKey: string;
+  /** HRMS workforce overrides applied on top of the loaded data, keyed by team. */
+  hrmsOverrides: Record<string, HrmsOverride>;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -32,6 +37,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   thresholds: { spiWarn: 0.9, cpiWarn: 0.9, attritionHigh: 16 },
   sheetTemplate: { sheetId: "", sheetTab: "Sheet1", csvUrl: "", mappingNote: "" },
   apiKey: "",
+  hrmsOverrides: {},
 };
 
 const KEYS = Object.keys(DEFAULT_SETTINGS) as (keyof AppSettings)[];
@@ -172,6 +178,36 @@ export function applyWeightOverrides(data: DashboardData, weights: Record<string
       }
       if (totalW > 0) p.score = Math.round(total / totalW);
     }
+  }
+  return next;
+}
+
+/**
+ * Apply HRMS overrides (per-team) to each period's workforce, then recompute
+ * company-wide aggregates. Pure: returns a new DashboardData.
+ */
+export function applyHrmsOverrides(data: DashboardData, overrides: Record<string, HrmsOverride>): DashboardData {
+  if (!overrides || Object.keys(overrides).length === 0) return data;
+  const next = structuredClone(data);
+  for (const period of next.periods) {
+    const wf = period.operations?.workforce;
+    if (!wf?.teams?.length) continue;
+    for (const t of wf.teams) {
+      const o = overrides[t.team];
+      if (!o) continue;
+      if (o.headcount != null) t.headcount = o.headcount;
+      if (o.utilization != null) t.utilization = o.utilization;
+      if (o.attrition != null) t.attrition = o.attrition;
+      if (o.costPerHead != null) t.costPerHead = o.costPerHead;
+      if (o.revenueContribution != null) t.revenueContribution = o.revenueContribution;
+      // Keep total people cost consistent with headcount × cost/head.
+      t.totalCost = Math.round((t.headcount * t.costPerHead) / 1000 * 100) / 100;
+    }
+    const totalHead = wf.teams.reduce((a, t) => a + t.headcount, 0);
+    wf.headcount = totalHead;
+    wf.costPerHead = totalHead > 0 ? Math.round(wf.teams.reduce((a, t) => a + t.costPerHead * t.headcount, 0) / totalHead) : 0;
+    wf.utilization = totalHead > 0 ? Math.round(wf.teams.reduce((a, t) => a + t.utilization * t.headcount, 0) / totalHead) : 0;
+    wf.attrition = totalHead > 0 ? Math.round(wf.teams.reduce((a, t) => a + t.attrition * t.headcount, 0) / totalHead) : 0;
   }
   return next;
 }
