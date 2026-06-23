@@ -5,7 +5,8 @@
  * OneIBC AI FP&A Dashboard — Real-time Financial Planning & Analysis Analyst.
  */
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
 import {
   Activity, Wallet, TrendingUp, Target,
   FileText, ArrowUp, ArrowDown, Minus, Building2, Sparkles, Bot, Download, Info, MessageSquarePlus, Settings,
@@ -45,21 +46,46 @@ type OperationsTab = (typeof OPERATIONS_TABS)[number]["id"];
 
 /**
  * Hover tooltip (Vietnamese) describing a metric's meaning, logic and data flow.
- * Wrap any label/cell; the tooltip appears on mouse-over (no click needed).
+ * Renders the tooltip in a body portal with fixed positioning so it is never
+ * clipped by an ancestor's `overflow:hidden` / `truncate` (the previous bug).
  */
 function InfoTip({ docKey, children, className = "" }: { docKey: string; children: React.ReactNode; className?: string }) {
   const doc = getMetricDoc(docKey);
+  const ref = useRef<HTMLSpanElement>(null);
+  const [show, setShow] = useState(false);
+  const [pos, setPos] = useState({ x: 0, y: 0 });
   if (!doc) return <>{children}</>;
+
+  const open = () => {
+    const r = ref.current?.getBoundingClientRect();
+    if (r) {
+      const x = Math.min(r.left, (typeof window !== "undefined" ? window.innerWidth : 1200) - 304);
+      setPos({ x: Math.max(8, x), y: r.bottom + 6 });
+    }
+    setShow(true);
+  };
+
   return (
-    <span className={`relative group inline-flex items-center gap-1 cursor-help ${className}`}>
+    <span
+      ref={ref}
+      onMouseEnter={open}
+      onMouseLeave={() => setShow(false)}
+      className={`relative inline-flex items-center gap-1 cursor-help ${className}`}
+    >
       {children}
-      <Info size={11} className="shrink-0 text-slate-300 group-hover:text-indigo-500" />
-      <span className="pointer-events-none absolute left-0 top-full mt-2 z-50 hidden group-hover:block w-72 p-3 rounded-xl bg-slate-900 text-white text-[10px] leading-relaxed shadow-2xl normal-case font-medium text-left">
-        <span className="block font-black text-indigo-300 mb-1.5">{doc.label}</span>
-        <span className="block mb-1"><b className="text-slate-300">Là gì:</b> {doc.what}</span>
-        <span className="block mb-1"><b className="text-slate-300">Logic:</b> {doc.logic}</span>
-        <span className="block"><b className="text-slate-300">Data flow:</b> {doc.dataFlow}</span>
-      </span>
+      <Info size={11} className="shrink-0 text-slate-300" />
+      {show && typeof document !== "undefined" && createPortal(
+        <div
+          style={{ position: "fixed", left: pos.x, top: pos.y, zIndex: 9999, maxWidth: 288 }}
+          className="pointer-events-none p-3 rounded-xl bg-slate-900 text-white text-[10px] leading-relaxed shadow-2xl normal-case text-left font-medium"
+        >
+          <div className="font-black text-indigo-300 mb-1.5">{doc.label}</div>
+          <div className="mb-1"><b className="text-slate-300">Là gì:</b> {doc.what}</div>
+          <div className="mb-1"><b className="text-slate-300">Logic:</b> {doc.logic}</div>
+          <div><b className="text-slate-300">Data flow:</b> {doc.dataFlow}</div>
+        </div>,
+        document.body
+      )}
     </span>
   );
 }
@@ -93,17 +119,17 @@ function ProgressBar({ value, tone, thick = false }: { value: number; tone: stri
   );
 }
 
-function Gauge({ score, size = "h-24", scoreSize = "text-3xl" }: { score: number; size?: string; scoreSize?: string }) {
+function Gauge({ score, size = "h-24", scoreSize = "text-3xl", scoreColor = "text-slate-800", track = "#f1f5f9" }: { score: number; size?: string; scoreSize?: string; scoreColor?: string; track?: string }) {
   const tone = scoreTone(score);
   const color = colorMap[tone].bar;
   return (
     <div className={`relative ${size} flex items-center justify-center`}>
       <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
-        <circle cx="50" cy="50" r="40" fill="none" stroke="#f1f5f9" strokeWidth="8" />
+        <circle cx="50" cy="50" r="40" fill="none" stroke={track} strokeWidth="8" />
         <circle cx="50" cy="50" r="40" fill="none" stroke={color} strokeWidth="8" strokeDasharray={`${(score / 100) * 251} 251`} strokeLinecap="round" className="transition-all duration-1000" />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center leading-none">
-        <span className={`${scoreSize} font-black text-slate-800`}>{score}</span>
+        <span className={`${scoreSize} font-black ${scoreColor}`}>{score}</span>
       </div>
     </div>
   );
@@ -195,7 +221,7 @@ export default function BODDashboard({ initialData }: Props) {
 
   const d: PeriodData = dashData.periods[periodIdx] ?? dashData.periods[0];
   
-  const currentTargetLabel = comparisonMode === "budget" ? "Budget" : "Forecast";
+  const currentTargetLabel = comparisonMode === "budget" ? "Target" : "Forecast";
   const revenueTarget = comparisonMode === "budget" ? d.revenueTarget : d.revenueForecast;
   const gpTarget = comparisonMode === "budget" ? d.gpTarget : d.gpForecast;
   const ebitdaTarget = comparisonMode === "budget" ? d.ebitdaTarget : d.ebitdaForecast;
@@ -304,7 +330,7 @@ export default function BODDashboard({ initialData }: Props) {
           
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest hidden lg:inline">Target</span>
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest hidden lg:inline">So với</span>
               <div className="flex bg-slate-100 p-1 rounded-xl gap-1">
                {(["budget", "forecast"] as const).map(m => (
                  <button
@@ -312,7 +338,7 @@ export default function BODDashboard({ initialData }: Props) {
                   onClick={() => setComparisonMode(m)}
                   className={`px-4 py-1.5 text-[10px] font-black rounded-lg transition-all ${comparisonMode === m ? "bg-white text-indigo-600 shadow-sm" : "text-slate-400 hover:text-slate-600"}`}
                  >
-                   {m === "budget" ? "Budget" : "Forecast"}
+                   {m === "budget" ? "Target" : "Forecast"}
                  </button>
                ))}
               </div>
@@ -378,7 +404,7 @@ export default function BODDashboard({ initialData }: Props) {
                 <div className="bg-[#0c1430] rounded-[28px] p-7 text-white shadow-2xl">
                    <div className="flex flex-col lg:flex-row gap-8 items-center">
                       <div className="flex items-center gap-6 shrink-0">
-                         <Gauge score={overallHealth} size="h-28" scoreSize="text-4xl" />
+                         <Gauge score={overallHealth} size="h-28" scoreSize="text-4xl" scoreColor="text-white" track="rgba(255,255,255,0.12)" />
                          <div>
                             <div className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-400 mb-1">Company Health Index</div>
                             <div className="text-2xl font-black">{overallHealth >= 80 ? "Strong" : overallHealth >= 60 ? "Stable" : "At Risk"}</div>
@@ -454,13 +480,12 @@ export default function BODDashboard({ initialData }: Props) {
                   />
                   {portfolio ? (
                     <>
-                      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                         {[
                           { l: "SPI", k: "spi", v: fmtIndex(portfolio.spi) },
                           { l: "CPI", k: "cpi", v: fmtIndex(portfolio.cpi) },
-                          { l: "EAC", k: "eac", v: `$${fmt1(portfolio.eac)}M` },
-                          { l: "VAC", k: "vac", v: `$${fmt1(portfolio.vac)}M` },
-                          { l: "Complete", k: "percentComplete", v: `${Math.round(portfolio.percentComplete)}%` },
+                          { l: "% Complete", k: "percentComplete", v: `${Math.round(portfolio.percentComplete)}%` },
+                          { l: "VAR %", k: "vac", v: `${portfolio.bac > 0 ? (portfolio.vac >= 0 ? "+" : "") + ((portfolio.vac / portfolio.bac) * 100).toFixed(0) : "0"}%` },
                         ].map((m) => (
                           <div key={m.l} className="bg-slate-50 rounded-2xl p-4 text-center">
                             <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5 inline-flex justify-center"><InfoTip docKey={m.k}>{m.l}</InfoTip></div>
@@ -840,17 +865,15 @@ export default function BODDashboard({ initialData }: Props) {
                    <Card>
                       <CardHeader
                         title="Workforce Earned Value (EVM rollup)"
-                        sub="People budget vs delivered value across all teams"
+                        sub="People cost vs delivered value across all teams"
                         right={<Badge label={teamRollup.health === "ahead" ? "Ahead" : teamRollup.health === "behind" ? "Behind" : "On Track"} tone={teamRollup.health === "ahead" ? "emerald" : teamRollup.health === "behind" ? "red" : "amber"} />}
                       />
-                      <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         {[
-                          { l: "BAC", k: "bac", v: `$${fmt1(teamRollup.bac)}M` },
-                          { l: "AC",  k: "ac",  v: `$${fmt1(teamRollup.ac)}M` },
                           { l: "SPI", k: "spi", v: fmtIndex(teamRollup.spi) },
                           { l: "CPI", k: "cpi", v: fmtIndex(teamRollup.cpi) },
-                          { l: "EAC", k: "eac", v: `$${fmt1(teamRollup.eac)}M` },
-                          { l: "VAC", k: "vac", v: `$${fmt1(teamRollup.vac)}M` },
+                          { l: "% Complete", k: "percentComplete", v: `${Math.round(teamRollup.percentComplete)}%` },
+                          { l: "VAR %", k: "vac", v: `${teamRollup.bac > 0 ? (teamRollup.vac >= 0 ? "+" : "") + ((teamRollup.vac / teamRollup.bac) * 100).toFixed(0) : "0"}%` },
                         ].map((m) => (
                           <div key={m.l} className="bg-slate-50 rounded-2xl p-4 text-center">
                             <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5 inline-flex justify-center"><InfoTip docKey={m.k}>{m.l}</InfoTip></div>
@@ -878,8 +901,7 @@ export default function BODDashboard({ initialData }: Props) {
                               <th className="text-right px-2"><InfoTip docKey="revenueContribution">Rev Contrib</InfoTip></th>
                               <th className="text-right px-2"><InfoTip docKey="spi">SPI</InfoTip></th>
                               <th className="text-right px-2"><InfoTip docKey="cpi">CPI</InfoTip></th>
-                              <th className="text-right px-2"><InfoTip docKey="eac">EAC</InfoTip></th>
-                              <th className="text-right pl-2"><InfoTip docKey="vac">VAC</InfoTip></th>
+                              <th className="text-right pl-2"><InfoTip docKey="vac">VAR %</InfoTip></th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-50">
@@ -896,8 +918,7 @@ export default function BODDashboard({ initialData }: Props) {
                                   <td className="text-right px-2 font-bold text-indigo-600">${fmt1(t.revenueContribution)}M</td>
                                   <td className={`text-right px-2 font-black ${e.spi >= 1 ? "text-emerald-500" : "text-amber-500"}`}>{fmtIndex(e.spi)}</td>
                                   <td className={`text-right px-2 font-black ${e.cpi >= 1 ? "text-emerald-500" : "text-red-500"}`}>{fmtIndex(e.cpi)}</td>
-                                  <td className="text-right px-2 text-slate-500">${fmt1(e.eac)}M</td>
-                                  <td className={`text-right pl-2 font-black ${e.vac >= 0 ? "text-emerald-500" : "text-red-500"}`}>{e.vac >= 0 ? "+" : ""}{fmt1(e.vac)}M</td>
+                                  <td className={`text-right pl-2 font-black ${e.vac >= 0 ? "text-emerald-500" : "text-red-500"}`}>{t.evm.bac > 0 ? (e.vac >= 0 ? "+" : "") + ((e.vac / t.evm.bac) * 100).toFixed(0) : "0"}%</td>
                                 </tr>
                               );
                             })}
@@ -923,7 +944,7 @@ export default function BODDashboard({ initialData }: Props) {
                       <div className="grid grid-cols-4 px-5 py-4 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] border-b border-slate-50 mb-3">
                          <div>Account</div>
                          <div className="text-right">Actual</div>
-                         <div className="text-right">Budget</div>
+                         <div className="text-right">Target</div>
                          <div className="text-right">Var</div>
                       </div>
                       {d.capital?.pl.map((line, i) => (
@@ -1030,7 +1051,7 @@ export default function BODDashboard({ initialData }: Props) {
                             <tr className="bg-slate-50">
                                <th className="p-4 text-left text-xs font-black uppercase tracking-widest text-slate-400">Metric</th>
                                <th className="p-4 text-right text-xs font-black uppercase tracking-widest text-slate-400">Actual</th>
-                               <th className="p-4 text-right text-xs font-black uppercase tracking-widest text-slate-400">Budget</th>
+                               <th className="p-4 text-right text-xs font-black uppercase tracking-widest text-slate-400">Target</th>
                                <th className="p-4 text-right text-xs font-black uppercase tracking-widest text-slate-400">Variance</th>
                             </tr>
                          </thead>
