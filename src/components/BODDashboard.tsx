@@ -5,11 +5,12 @@
  * OneIBC AI FP&A Dashboard — Real-time Financial Planning & Analysis Analyst.
  */
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback } from "react";
 import {
   Activity, Wallet, TrendingUp, Target,
-  FileText, Bell, ArrowUp, ArrowDown, Minus, Building2, X, Sparkles, Bot, Search, Download, Briefcase
+  FileText, ArrowUp, ArrowDown, Minus, Building2, Sparkles, Bot, Download, Info, MessageSquarePlus,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import dynamicImport from "next/dynamic";
 import {
   ResponsiveContainer, Area, ComposedChart, LineChart, Line, XAxis, YAxis,
@@ -18,6 +19,8 @@ import {
 import type { DashboardData, PeriodData, ComparisonMode, EVMInput } from "@/types/dashboard";
 import { colorMap, statusColor, sevColor, scoreTone, fmt1, SCORECARD_META, NAV } from "@/lib/helpers";
 import { computeEVM, rollupEVM, fmtIndex } from "@/lib/evm";
+import { getMetricDoc } from "@/lib/metricDocs";
+import { generateExecutiveBrief, needsLeadComment } from "@/lib/aiReasoning";
 
 const AIChatPanel = dynamicImport(() => import("./AIChatPanel"), { ssr: false });
 
@@ -38,6 +41,27 @@ type OperationsTab = (typeof OPERATIONS_TABS)[number]["id"];
 
 // ─── Micro-components ────────────────────────────────────────────────────────
 
+/**
+ * Hover tooltip (Vietnamese) describing a metric's meaning, logic and data flow.
+ * Wrap any label/cell; the tooltip appears on mouse-over (no click needed).
+ */
+function InfoTip({ docKey, children, className = "" }: { docKey: string; children: React.ReactNode; className?: string }) {
+  const doc = getMetricDoc(docKey);
+  if (!doc) return <>{children}</>;
+  return (
+    <span className={`relative group inline-flex items-center gap-1 cursor-help ${className}`}>
+      {children}
+      <Info size={11} className="shrink-0 text-slate-300 group-hover:text-indigo-500" />
+      <span className="pointer-events-none absolute left-0 top-full mt-2 z-50 hidden group-hover:block w-72 p-3 rounded-xl bg-slate-900 text-white text-[10px] leading-relaxed shadow-2xl normal-case font-medium text-left">
+        <span className="block font-black text-indigo-300 mb-1.5">{doc.label}</span>
+        <span className="block mb-1"><b className="text-slate-300">Là gì:</b> {doc.what}</span>
+        <span className="block mb-1"><b className="text-slate-300">Logic:</b> {doc.logic}</span>
+        <span className="block"><b className="text-slate-300">Data flow:</b> {doc.dataFlow}</span>
+      </span>
+    </span>
+  );
+}
+
 function Badge({ label, tone }: { label: string; tone: string }) {
   const c = colorMap[tone] ?? colorMap.slate;
   return (
@@ -49,7 +73,7 @@ function Badge({ label, tone }: { label: string; tone: string }) {
 }
 
 function TrendArrow({ trend, goodIsUp = true, size = 12 }: { trend: number | string; goodIsUp?: boolean; size?: number }) {
-  let dir = typeof trend === "string" ? trend : trend > 0 ? "up" : trend < 0 ? "down" : "flat";
+  const dir = typeof trend === "string" ? trend : trend > 0 ? "up" : trend < 0 ? "down" : "flat";
   const good = (dir === "up" && goodIsUp) || (dir === "down" && !goodIsUp);
   const bad  = (dir === "up" && !goodIsUp) || (dir === "down" && goodIsUp);
   const color = dir === "flat" ? "text-slate-400" : good ? "text-emerald-500" : bad ? "text-red-500" : "text-slate-400";
@@ -87,11 +111,13 @@ function Card({ children, className = "" }: { children: React.ReactNode; classNa
   return <div className={`bg-white rounded-2xl shadow-sm border border-slate-100 p-4 ${className}`}>{children}</div>;
 }
 
-function CardHeader({ title, sub, right }: { title: string; sub?: string; right?: React.ReactNode }) {
+function CardHeader({ title, sub, right, docKey }: { title: string; sub?: string; right?: React.ReactNode; docKey?: string }) {
   return (
     <div className="flex items-center justify-between mb-4 gap-4 shrink-0">
       <div className="min-w-0">
-        <h3 className="text-sm font-extrabold text-slate-800 truncate">{title}</h3>
+        <h3 className="text-sm font-extrabold text-slate-800 truncate">
+          {docKey ? <InfoTip docKey={docKey}>{title}</InfoTip> : title}
+        </h3>
         {sub && <p className="text-[10px] text-slate-400 truncate mt-0.5">{sub}</p>}
       </div>
       {right && <div className="shrink-0">{right}</div>}
@@ -99,9 +125,9 @@ function CardHeader({ title, sub, right }: { title: string; sub?: string; right?
   );
 }
 
-function KpiCard({ icon: Icon, label, value, target, spark, color, suffix = "M", isPct = false }: {
-  icon: any; label: string; value: number; target: number | { base: number; target: number };
-  spark?: number[]; color: string; suffix?: string; isPct?: boolean;
+function KpiCard({ icon: Icon, label, value, target, spark, color, suffix = "M", isPct = false, docKey }: {
+  icon: LucideIcon; label: string; value: number; target: number | { base: number; target: number };
+  spark?: number[]; color: string; suffix?: string; isPct?: boolean; docKey?: string;
 }) {
   const deltaVal = isPct ? null : (((value - (target as number)) / (target as number)) * 100);
   return (
@@ -110,7 +136,9 @@ function KpiCard({ icon: Icon, label, value, target, spark, color, suffix = "M",
         <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: color + "20" }}>
           <Icon size={14} style={{ color }} />
         </div>
-        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate">{label}</span>
+        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate">
+          {docKey ? <InfoTip docKey={docKey}>{label}</InfoTip> : label}
+        </span>
       </div>
       <div className="flex items-end justify-between gap-2">
         <div className="min-w-0">
@@ -145,7 +173,7 @@ interface Props {
 }
 
 export default function BODDashboard({ initialData }: Props) {
-  const [dashData, setDashData] = useState<DashboardData>(initialData);
+  const [dashData] = useState<DashboardData>(initialData);
   const [view, setView] = useState("overview");
   const [overviewTab, setOverviewTab] = useState<OverviewTab>("pulse");
   const [operationsTab, setOperationsTab] = useState<OperationsTab>("plants");
@@ -153,6 +181,7 @@ export default function BODDashboard({ initialData }: Props) {
   const [comparisonMode, setComparisonMode] = useState<ComparisonMode>("budget");
   const [aiChatOpen, setAIChatOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [reportComments, setReportComments] = useState<Record<string, string>>({});
 
   const d: PeriodData = dashData.periods[periodIdx] ?? dashData.periods[0];
   
@@ -163,6 +192,15 @@ export default function BODDashboard({ initialData }: Props) {
 
   const forecastPct = d.forecastTarget > 0 ? Math.round((d.forecastBase / d.forecastTarget) * 100) : 0;
   const navLabel = NAV.find((n) => n.id === view)?.label || "AI Overview";
+
+  // ── Data-source status (shown on every tab) ─────────────────────────────────
+  const sourceLabel =
+    dashData.source === "google_sheets" ? "Google Sheets" :
+    dashData.source === "csv" ? "CSV Upload" : "Static seed data";
+  const sourceLive = dashData.source === "google_sheets" || dashData.source === "csv";
+  const refreshedAt = dashData.lastRefreshed
+    ? new Date(dashData.lastRefreshed).toLocaleString("vi-VN", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit", year: "numeric" })
+    : "—";
 
   // ── Executive Pulse derived indicators ──────────────────────────────────────
   const scorecardScores = Object.values(d.scorecard).map((s) => s.score);
@@ -177,18 +215,19 @@ export default function BODDashboard({ initialData }: Props) {
   const wf = d.operations?.workforce;
   const teams = wf?.teams ?? [];
   const teamRollup = teams.length ? rollupEVM(teams.map((t) => t.evm)) : null;
+  const execBrief = generateExecutiveBrief(d);
+
+  const showToast = useCallback((msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 3000);
+  }, []);
 
   const handlePrint = useCallback(() => {
     showToast("Preparing report for PDF export...");
     setTimeout(() => {
       window.print();
     }, 500);
-  }, []);
-
-  function showToast(msg: string) {
-    setToast(msg);
-    setTimeout(() => setToast(null), 3000);
-  }
+  }, [showToast]);
 
   return (
     <div className="flex h-screen bg-slate-50 text-slate-800 overflow-hidden relative font-sans">
@@ -279,6 +318,19 @@ export default function BODDashboard({ initialData }: Props) {
 
         {/* ── CONTENT AREA ─────────────────────────────────────────────────── */}
         <div className="flex-1 overflow-y-auto p-8 space-y-6">
+          {/* ── Data-source status (all tabs) ── */}
+          <div className="flex items-center justify-between gap-4 bg-white border border-slate-100 rounded-2xl px-5 py-3 no-print">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span className={`w-2 h-2 rounded-full shrink-0 ${sourceLive ? "bg-emerald-500" : "bg-slate-300"}`} />
+              <span className="text-[11px] font-black text-slate-700">Nguồn dữ liệu: {sourceLabel}</span>
+              <span className="text-[10px] font-bold text-slate-300">•</span>
+              <span className="text-[11px] font-medium text-slate-400 truncate">Fetch cuối: {refreshedAt}</span>
+            </div>
+            <span className={`text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full ${sourceLive ? "bg-emerald-50 text-emerald-600" : "bg-slate-100 text-slate-500"}`}>
+              {sourceLive ? "Live" : "Seed"}
+            </span>
+          </div>
+
           {view === "overview" ? (
              <div className="space-y-6">
                 {/* ── Overview sub-section tabs ── */}
@@ -329,16 +381,16 @@ export default function BODDashboard({ initialData }: Props) {
 
                 {/* KPI Row */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <KpiCard icon={Wallet} label={`Revenue (${currentTargetLabel})`} value={d.revenue} target={revenueTarget} spark={d.revenueSpark} color="#6366f1" />
-                  <KpiCard icon={TrendingUp} label={`Gross Profit (${currentTargetLabel})`} value={d.gp} target={gpTarget} spark={d.gpSpark} color="#10b981" />
-                  <KpiCard icon={Target} label="Forecast Progress" value={forecastPct} target={{ base: d.forecastBase, target: d.forecastTarget }} isPct color="#0ea5e9" />
-                  <KpiCard icon={Activity} label={`EBITDA (${currentTargetLabel})`} value={d.ebitda} target={ebitdaTarget} spark={d.ebitdaSpark} color="#f59e0b" />
+                  <KpiCard icon={Wallet} docKey="revenue" label={`Revenue (${currentTargetLabel})`} value={d.revenue} target={revenueTarget} spark={d.revenueSpark} color="#6366f1" />
+                  <KpiCard icon={TrendingUp} docKey="gp" label={`Gross Profit (${currentTargetLabel})`} value={d.gp} target={gpTarget} spark={d.gpSpark} color="#10b981" />
+                  <KpiCard icon={Target} docKey="forecastProgress" label="Forecast Progress" value={forecastPct} target={{ base: d.forecastBase, target: d.forecastTarget }} isPct color="#0ea5e9" />
+                  <KpiCard icon={Activity} docKey="ebitda" label={`EBITDA (${currentTargetLabel})`} value={d.ebitda} target={ebitdaTarget} spark={d.ebitdaSpark} color="#f59e0b" />
                 </div>
 
                 {/* Scorecard + Risks */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   <Card className="lg:col-span-2 flex flex-col min-h-0">
-                    <CardHeader title="Strategic Health Scorecard" sub="Balanced Scorecard Pillar Performance" />
+                    <CardHeader title="Strategic Health Scorecard" sub="Balanced Scorecard Pillar Performance" docKey="scorecard" />
                     <div className="grid grid-cols-4 gap-4 flex-1 items-center py-4">
                       {Object.keys(d.scorecard).map((k) => {
                         const s = d.scorecard[k as keyof typeof d.scorecard];
@@ -356,7 +408,7 @@ export default function BODDashboard({ initialData }: Props) {
                   </Card>
 
                   <Card className="flex flex-col min-h-0">
-                    <CardHeader title="Enterprise Risks" sub="Operational & Compliance Watchlist" />
+                    <CardHeader title="Enterprise Risks" sub="Operational & Compliance Watchlist" docKey="risk" />
                     <div className="space-y-4 overflow-y-auto pr-1">
                       {d.risks.slice(0, 4).map((r) => (
                         <div key={r.area} className="flex items-center justify-between text-[11px] gap-2 p-3 rounded-2xl hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-100">
@@ -382,14 +434,14 @@ export default function BODDashboard({ initialData }: Props) {
                     <>
                       <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
                         {[
-                          { l: "SPI", v: fmtIndex(portfolio.spi) },
-                          { l: "CPI", v: fmtIndex(portfolio.cpi) },
-                          { l: "EAC", v: `$${fmt1(portfolio.eac)}M` },
-                          { l: "VAC", v: `$${fmt1(portfolio.vac)}M` },
-                          { l: "Complete", v: `${Math.round(portfolio.percentComplete)}%` },
+                          { l: "SPI", k: "spi", v: fmtIndex(portfolio.spi) },
+                          { l: "CPI", k: "cpi", v: fmtIndex(portfolio.cpi) },
+                          { l: "EAC", k: "eac", v: `$${fmt1(portfolio.eac)}M` },
+                          { l: "VAC", k: "vac", v: `$${fmt1(portfolio.vac)}M` },
+                          { l: "Complete", k: "percentComplete", v: `${Math.round(portfolio.percentComplete)}%` },
                         ].map((m) => (
                           <div key={m.l} className="bg-slate-50 rounded-2xl p-4 text-center">
-                            <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5">{m.l}</div>
+                            <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5 inline-flex justify-center"><InfoTip docKey={m.k}>{m.l}</InfoTip></div>
                             <div className="text-lg font-black text-slate-800">{m.v}</div>
                           </div>
                         ))}
@@ -469,10 +521,10 @@ export default function BODDashboard({ initialData }: Props) {
                          <Bot size={40} />
                       </div>
                       <div className="flex-1">
-                         <div className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-400 mb-2">OneIBC AI Executive Insight</div>
+                         <div className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-400 mb-2">OneIBC AI Executive Insight · Tự tổng hợp (rule-based)</div>
                          <div className="flex flex-col gap-2">
-                            {d.narrative.slice(0, 2).map((n, i) => (
-                               <div key={i} className="text-base font-bold text-slate-100 flex gap-3">
+                            {execBrief.slice(0, 3).map((n, i) => (
+                               <div key={i} className="text-[15px] font-bold text-slate-100 flex gap-3 leading-relaxed">
                                   <span className="text-indigo-500 font-black shrink-0">{i+1}.</span>
                                   <span>{n}</span>
                                </div>
@@ -488,7 +540,7 @@ export default function BODDashboard({ initialData }: Props) {
                 ) : overviewTab === "variance" ? (
                 <div className="space-y-6">
                    <Card className="flex flex-col h-[440px]">
-                      <CardHeader title="Variance Intelligence" sub={`Real-time Revenue vs ${currentTargetLabel} Deviation`} />
+                      <CardHeader title="Variance Intelligence" sub={`Real-time Revenue vs ${currentTargetLabel} Deviation`} docKey="variance" />
                       <div className="flex-1">
                         <ResponsiveContainer width="100%" height="100%">
                           <ComposedChart data={d.chart}>
@@ -582,7 +634,7 @@ export default function BODDashboard({ initialData }: Props) {
 
                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                       <Card className="flex flex-col">
-                         <CardHeader title="Revenue & Margin Drivers" sub="Performance by Sales Pricebook" />
+                         <CardHeader title="Revenue & Margin Drivers" sub="Performance by Sales Pricebook" docKey="department" />
                          <div className="space-y-6">
                            {d.departments.map((dep) => (
                              <div key={dep.name}>
@@ -649,7 +701,7 @@ export default function BODDashboard({ initialData }: Props) {
                 {operationsTab === "plants" ? (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                    <Card>
-                      <CardHeader title="Fulfillment Plants (Centers)" sub="Operational performance by Location" />
+                      <CardHeader title="Fulfillment Plants (Centers)" sub="Operational performance by Location" docKey="serviceCenter" />
                       {d.operations?.serviceCenters?.length ? (
                       <div className="space-y-4">
                          {d.operations.serviceCenters.map(sc => (
@@ -672,7 +724,7 @@ export default function BODDashboard({ initialData }: Props) {
                       )}
                    </Card>
                    <Card>
-                      <CardHeader title="Supplier & Bank Ecosystem" sub="Financial Integrity & Spend" />
+                      <CardHeader title="Supplier & Bank Ecosystem" sub="Financial Integrity & Spend" docKey="supplier" />
                       {d.operations?.suppliers?.length ? (
                       <div className="space-y-8">
                          {d.operations.suppliers.map(sup => (
@@ -714,15 +766,15 @@ export default function BODDashboard({ initialData }: Props) {
                       />
                       <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
                         {[
-                          { l: "BAC", v: `$${fmt1(teamRollup.bac)}M` },
-                          { l: "AC",  v: `$${fmt1(teamRollup.ac)}M` },
-                          { l: "SPI", v: fmtIndex(teamRollup.spi) },
-                          { l: "CPI", v: fmtIndex(teamRollup.cpi) },
-                          { l: "EAC", v: `$${fmt1(teamRollup.eac)}M` },
-                          { l: "VAC", v: `$${fmt1(teamRollup.vac)}M` },
+                          { l: "BAC", k: "bac", v: `$${fmt1(teamRollup.bac)}M` },
+                          { l: "AC",  k: "ac",  v: `$${fmt1(teamRollup.ac)}M` },
+                          { l: "SPI", k: "spi", v: fmtIndex(teamRollup.spi) },
+                          { l: "CPI", k: "cpi", v: fmtIndex(teamRollup.cpi) },
+                          { l: "EAC", k: "eac", v: `$${fmt1(teamRollup.eac)}M` },
+                          { l: "VAC", k: "vac", v: `$${fmt1(teamRollup.vac)}M` },
                         ].map((m) => (
                           <div key={m.l} className="bg-slate-50 rounded-2xl p-4 text-center">
-                            <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5">{m.l}</div>
+                            <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5 inline-flex justify-center"><InfoTip docKey={m.k}>{m.l}</InfoTip></div>
                             <div className="text-lg font-black text-slate-800">{m.v}</div>
                           </div>
                         ))}
@@ -739,16 +791,16 @@ export default function BODDashboard({ initialData }: Props) {
                           <thead>
                             <tr className="text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-100">
                               <th className="text-left py-3 pr-2">Team</th>
-                              <th className="text-right px-2">HC</th>
-                              <th className="text-right px-2">Util</th>
-                              <th className="text-right px-2">Attr</th>
-                              <th className="text-right px-2">Cost/Head</th>
+                              <th className="text-right px-2"><InfoTip docKey="headcount">HC</InfoTip></th>
+                              <th className="text-right px-2"><InfoTip docKey="utilization">Util</InfoTip></th>
+                              <th className="text-right px-2"><InfoTip docKey="attrition">Attr</InfoTip></th>
+                              <th className="text-right px-2"><InfoTip docKey="costPerHead">Cost/Head</InfoTip></th>
                               <th className="text-right px-2">Total Cost</th>
-                              <th className="text-right px-2">Rev Contrib</th>
-                              <th className="text-right px-2">SPI</th>
-                              <th className="text-right px-2">CPI</th>
-                              <th className="text-right px-2">EAC</th>
-                              <th className="text-right pl-2">VAC</th>
+                              <th className="text-right px-2"><InfoTip docKey="revenueContribution">Rev Contrib</InfoTip></th>
+                              <th className="text-right px-2"><InfoTip docKey="spi">SPI</InfoTip></th>
+                              <th className="text-right px-2"><InfoTip docKey="cpi">CPI</InfoTip></th>
+                              <th className="text-right px-2"><InfoTip docKey="eac">EAC</InfoTip></th>
+                              <th className="text-right pl-2"><InfoTip docKey="vac">VAC</InfoTip></th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-50">
@@ -964,24 +1016,61 @@ export default function BODDashboard({ initialData }: Props) {
           ) : (
              <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <Card className="max-w-4xl mx-auto p-8">
-                   <CardHeader title="Reports Library" sub="MIS Governance Tier-1 Document Stack" />
+                   <CardHeader title="Reports Library" sub="Bi-weekly & monthly → team-lead comment • Others → AI-synthesized" />
                    <div className="divide-y divide-slate-100 mt-6">
-                      {dashData.reports.map((r) => (
-                        <div key={r.name} className="flex items-center justify-between py-6 group cursor-pointer hover:px-4 transition-all rounded-2xl">
-                           <div className="flex items-center gap-5 min-w-0">
-                              <div className="w-14 h-14 rounded-2xl bg-slate-50 flex items-center justify-center group-hover:bg-indigo-50 transition-colors">
-                                 <FileText size={24} className="text-slate-400 group-hover:text-indigo-600 transition-colors" />
+                      {dashData.reports.map((r) => {
+                        const needsComment = needsLeadComment(r.name);
+                        return (
+                        <div key={r.name} className="py-6">
+                           <div className="flex items-center justify-between gap-4">
+                              <div className="flex items-center gap-5 min-w-0">
+                                 <div className="w-14 h-14 rounded-2xl bg-slate-50 flex items-center justify-center">
+                                    <FileText size={24} className="text-slate-400" />
+                                 </div>
+                                 <div className="min-w-0">
+                                    <div className="text-[15px] font-black text-slate-800 truncate">{r.name}</div>
+                                    <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1.5 flex items-center gap-2">
+                                       <span>Automated MIS • {r.updated}</span>
+                                       {needsComment ? (
+                                         <span className="text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full normal-case tracking-normal">Cần comment của Team Lead</span>
+                                       ) : (
+                                         <span className="text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full normal-case tracking-normal inline-flex items-center gap-1"><Sparkles size={9} /> AI-synthesized</span>
+                                       )}
+                                    </div>
+                                 </div>
                               </div>
-                              <div className="min-w-0">
-                                 <div className="text-[15px] font-black text-slate-800 truncate">{r.name}</div>
-                                 <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1.5">Automated MIS • {r.updated}</div>
-                              </div>
+                              <button className="w-12 h-12 rounded-full flex items-center justify-center text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 transition-all shrink-0">
+                                 <Download size={22} />
+                              </button>
                            </div>
-                           <button className="w-12 h-12 rounded-full flex items-center justify-center text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 transition-all">
-                              <Download size={22} />
-                           </button>
+
+                           {needsComment ? (
+                             <div className="mt-4 ml-[76px]">
+                                <div className="flex items-start gap-2">
+                                   <MessageSquarePlus size={16} className="text-slate-400 mt-2 shrink-0" />
+                                   <textarea
+                                      value={reportComments[r.name] ?? ""}
+                                      onChange={(e) => setReportComments((p) => ({ ...p, [r.name]: e.target.value }))}
+                                      placeholder="Team Lead bổ sung nhận định cho báo cáo này…"
+                                      rows={2}
+                                      className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[12px] text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20 resize-none"
+                                   />
+                                   <button
+                                      onClick={() => showToast(reportComments[r.name]?.trim() ? "Đã lưu comment (phiên làm việc)." : "Chưa có nội dung để lưu.")}
+                                      className="px-4 py-2.5 bg-indigo-600 text-white rounded-xl text-[11px] font-black hover:bg-indigo-700 transition-all shrink-0"
+                                   >
+                                      Lưu
+                                   </button>
+                                </div>
+                             </div>
+                           ) : (
+                             <div className="mt-3 ml-[76px] text-[11px] text-slate-500 font-medium bg-slate-50/60 rounded-xl px-4 py-3 leading-relaxed">
+                                <span className="font-black text-indigo-600">AI: </span>{execBrief[0]}
+                             </div>
+                           )}
                         </div>
-                      ))}
+                        );
+                      })}
                    </div>
                 </Card>
              </div>

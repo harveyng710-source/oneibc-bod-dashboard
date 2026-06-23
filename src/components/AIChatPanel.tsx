@@ -8,7 +8,7 @@
  */
 
 import { useState, useEffect, useRef } from "react";
-import { Send, Bot, User, Sparkles, X, ChevronRight, MessageSquare } from "lucide-react";
+import { Send, Bot, Sparkles, X, ChevronRight } from "lucide-react";
 import type { PeriodData } from "@/types/dashboard";
 import { fmt1 } from "@/lib/helpers";
 
