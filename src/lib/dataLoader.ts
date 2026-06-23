@@ -13,15 +13,16 @@
 import { STATIC_DASHBOARD_DATA } from "./staticData";
 import { parseCsvUrl } from "./csvParser";
 import { fetchGoogleSheetData } from "./googleSheets";
-import { getSettings, applyWeightOverrides } from "./settingsStore";
+import { getSettings, applyWeightOverrides, applyHrmsOverrides } from "./settingsStore";
 import type { DashboardData } from "@/types/dashboard";
 
 export async function loadDashboardData(): Promise<DashboardData> {
   const data = await resolveSource();
-  // Apply persisted scorecard weight overrides (no-op without a DB).
+  // Apply persisted overrides (no-op without a DB).
   try {
     const settings = await getSettings();
-    return applyWeightOverrides(data, settings.scorecardWeights);
+    const withWeights = applyWeightOverrides(data, settings.scorecardWeights);
+    return applyHrmsOverrides(withWeights, settings.hrmsOverrides);
   } catch {
     return data;
   }

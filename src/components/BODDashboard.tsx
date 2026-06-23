@@ -14,6 +14,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
 import dynamicImport from "next/dynamic";
+import { useRouter } from "next/navigation";
 import {
   ResponsiveContainer, Area, Bar, ComposedChart, Line, XAxis, YAxis,
   CartesianGrid, Tooltip, Legend,
@@ -219,6 +220,8 @@ export default function BODDashboard({ initialData }: Props) {
   const [toast, setToast] = useState<string | null>(null);
   const [reportComments, setReportComments] = useState<Record<string, string>>({});
   const [previewReport, setPreviewReport] = useState<string | null>(null);
+  const [hrmsEdit, setHrmsEdit] = useState(false);
+  const [hrmsDraft, setHrmsDraft] = useState<Record<string, { headcount: number; utilization: number; attrition: number; costPerHead: number; revenueContribution: number }>>({});
 
   const d: PeriodData = dashData.periods[periodIdx] ?? dashData.periods[0];
   
@@ -269,10 +272,28 @@ export default function BODDashboard({ initialData }: Props) {
       })
     : [];
 
+  const router = useRouter();
+
   const showToast = useCallback((msg: string) => {
     setToast(msg);
     setTimeout(() => setToast(null), 3000);
   }, []);
+
+  function startHrmsEdit() {
+    const draft: typeof hrmsDraft = {};
+    for (const t of teams) draft[t.team] = { headcount: t.headcount, utilization: t.utilization, attrition: t.attrition, costPerHead: t.costPerHead, revenueContribution: t.revenueContribution };
+    setHrmsDraft(draft);
+    setHrmsEdit(true);
+  }
+
+  async function saveHrms() {
+    try {
+      const r = await fetch("/api/settings", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ hrmsOverrides: hrmsDraft }) });
+      if (r.ok) { showToast("Đã lưu HRMS — cập nhật dashboard."); setHrmsEdit(false); router.refresh(); }
+      else if (r.status === 401) showToast("Cần đăng nhập Settings (mật khẩu) để lưu.");
+      else { const j = await r.json().catch(() => ({})); showToast(j.error ?? "Lưu thất bại."); }
+    } catch { showToast("Lỗi kết nối khi lưu."); }
+  }
 
   const handlePrint = useCallback(() => {
     showToast("Preparing report for PDF export...");
@@ -979,6 +1000,52 @@ export default function BODDashboard({ initialData }: Props) {
                 <div className="space-y-6">
                 {wf ? (
                 <>
+                   {/* HRMS edit toolbar */}
+                   <div className="flex items-center justify-between">
+                      <div className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Workforce & Cost</div>
+                      {!hrmsEdit ? (
+                        <button onClick={startHrmsEdit} className="flex items-center gap-1.5 px-4 py-2 bg-slate-800 text-white rounded-xl text-[11px] font-black hover:bg-slate-900 transition-all">
+                          <Settings size={14} /> Sửa HRMS
+                        </button>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <button onClick={() => setHrmsEdit(false)} className="px-4 py-2 text-[11px] font-black text-slate-500 hover:text-slate-700">Hủy</button>
+                          <button onClick={saveHrms} className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-[11px] font-black hover:bg-indigo-700 transition-all">Lưu thay đổi</button>
+                        </div>
+                      )}
+                   </div>
+
+                   {hrmsEdit && (
+                   <Card>
+                      <CardHeader title="HRMS — Adjust workforce by team" sub="Sửa headcount, utilization, attrition, cost/head, revenue đóng góp. Lưu vào Postgres (cần đăng nhập Settings)." />
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-[12px] min-w-[720px]">
+                          <thead>
+                            <tr className="text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-100">
+                              <th className="text-left py-2 pr-2">Team</th>
+                              <th className="px-2">HC</th><th className="px-2">Util %</th><th className="px-2">Attr %</th><th className="px-2">Cost/Head $K</th><th className="px-2">Revenue $M</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-50">
+                            {teams.map((t) => {
+                              const dr = hrmsDraft[t.team] ?? { headcount: t.headcount, utilization: t.utilization, attrition: t.attrition, costPerHead: t.costPerHead, revenueContribution: t.revenueContribution };
+                              const setField = (k: keyof typeof dr, v: number) => setHrmsDraft((p) => ({ ...p, [t.team]: { ...dr, [k]: v } }));
+                              const numCell = (k: keyof typeof dr, step = 1) => (
+                                <td className="px-2 py-2"><input type="number" step={step} value={dr[k]} onChange={(e) => setField(k, parseFloat(e.target.value) || 0)} className="w-20 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-[12px] font-bold outline-none focus:ring-2 focus:ring-indigo-500/20" /></td>
+                              );
+                              return (
+                                <tr key={t.team}>
+                                  <td className="py-2 pr-2 font-black text-slate-700 whitespace-nowrap">{t.team} <Badge label={t.type === "revenue" ? "Rev" : "Sup"} tone={t.type === "revenue" ? "indigo" : "slate"} /></td>
+                                  {numCell("headcount")}{numCell("utilization")}{numCell("attrition")}{numCell("costPerHead")}{numCell("revenueContribution", 0.1)}
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                   </Card>
+                   )}
+
                    {/* Company-wide aggregates */}
                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       <Card><div className="text-[10px] font-black text-slate-400 uppercase mb-2 tracking-widest">Total Headcount</div><div className="text-3xl font-black text-slate-800">{wf.headcount}</div></Card>
