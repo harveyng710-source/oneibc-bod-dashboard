@@ -18,3 +18,30 @@ body {
     @apply border-slate-200;
   }
 }
+
+/* ── Enter animations (lightweight replacement for tailwindcss-animate) ──── */
+@keyframes oneibc-enter {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes oneibc-slide-up {
+  from { opacity: 0; transform: translateY(24px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.animate-in       { animation: oneibc-enter 0.4s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.animate-slide-up { animation: oneibc-slide-up 0.3s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+/* ── Custom scrollbar ──────────────────────────────────────────────────── */
+.custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+
+/* ── Print: hide chrome, show only the report content ──────────────────── */
+@media print {
+  .no-print { display: none !important; }
+  html, body { height: auto !important; background: #fff !important; }
+  aside { display: none !important; }
+  /* unclip scroll containers so the full report prints */
+  .overflow-hidden, .overflow-y-auto { overflow: visible !important; }
+  .h-screen { height: auto !important; }
+}

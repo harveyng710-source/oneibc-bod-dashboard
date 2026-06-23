@@ -217,11 +217,11 @@ export const STATIC_DASHBOARD_DATA: DashboardData = {
         { q: "FY", actual: null, base: 236, target: 245 },
       ],
       initiatives: [
-        { name: "AI & Automation Program", status: "On Track", progress: 80 },
-        { name: "Market Expansion (SEA)", status: "At Risk", progress: 50 },
-        { name: "Service Excellence 2.0", status: "On Track", progress: 76 },
-        { name: "Operational Efficiency", status: "Delayed", progress: 42 },
-        { name: "Data & Analytics Platform", status: "On Track", progress: 68 },
+        { name: "AI & Automation Program", status: "On Track", progress: 80, evm: { bac: 3.0, pv: 2.3, ev: 2.4,  ac: 2.25 } },
+        { name: "Market Expansion (SEA)", status: "At Risk", progress: 50, evm: { bac: 4.0, pv: 2.4, ev: 2.0,  ac: 2.6  } },
+        { name: "Service Excellence 2.0", status: "On Track", progress: 76, evm: { bac: 2.5, pv: 1.8, ev: 1.9,  ac: 1.85 } },
+        { name: "Operational Efficiency", status: "Delayed", progress: 42, evm: { bac: 2.0, pv: 1.4, ev: 0.84, ac: 1.1  } },
+        { name: "Data & Analytics Platform", status: "On Track", progress: 68, evm: { bac: 3.5, pv: 2.3, ev: 2.38, ac: 2.3  } },
       ],
       narrative: [
         "Revenue and gross profit momentum continued, ~8% ahead of YTD target.",
@@ -249,7 +249,18 @@ export const STATIC_DASHBOARD_DATA: DashboardData = {
           { name: "DBS", category: "Bank", spend: 0.15, performance: 92 },
           { name: "Local Agent HK", category: "Agent", spend: 0.4, performance: 88 },
           { name: "Local Agent BVI", category: "Agent", spend: 0.3, performance: 85 },
-        ]
+        ],
+        workforce: {
+          headcount: 210, utilization: 84, attrition: 13, costPerHead: 81,
+          teams: [
+            { team: "RM + Bank",  headcount: 45, utilization: 82, attrition: 12, costPerHead: 95, totalCost: 4.3, revenueContribution: 16.5, evm: { bac: 5.0, pv: 2.5, ev: 2.6,  ac: 2.4  } },
+            { team: "S&F",        headcount: 60, utilization: 88, attrition: 15, costPerHead: 80, totalCost: 4.8, revenueContribution: 12.4, evm: { bac: 5.5, pv: 2.8, ev: 2.6,  ac: 2.9  } },
+            { team: "Renew",      headcount: 35, utilization: 79, attrition: 10, costPerHead: 78, totalCost: 2.7, revenueContribution: 11.5, evm: { bac: 3.0, pv: 1.5, ev: 1.55, ac: 1.45 } },
+            { team: "ATA",        headcount: 25, utilization: 84, attrition: 18, costPerHead: 70, totalCost: 1.8, revenueContribution: 5.5,  evm: { bac: 2.2, pv: 1.1, ev: 1.0,  ac: 1.2  } },
+            { team: "Marketing",  headcount: 18, utilization: 75, attrition: 9,  costPerHead: 85, totalCost: 1.5, revenueContribution: 0,    evm: { bac: 1.8, pv: 0.9, ev: 0.95, ac: 0.88 } },
+            { team: "Ops",        headcount: 27, utilization: 90, attrition: 11, costPerHead: 72, totalCost: 1.9, revenueContribution: 0,    evm: { bac: 2.4, pv: 1.2, ev: 1.18, ac: 1.25 } },
+          ],
+        },
       },
       capital: {
         pl: [
