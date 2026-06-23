@@ -24,7 +24,8 @@ import { colorMap, statusColor, sevColor, scoreTone, fmt1, SCORECARD_META, NAV }
 import { computeEVM, rollupEVM, fmtIndex } from "@/lib/evm";
 import { getMetricDoc } from "@/lib/metricDocs";
 import { generateExecutiveBrief, needsLeadComment } from "@/lib/aiReasoning";
-import { recommendWorkload, revOpsProgress } from "@/lib/workload";
+import { recommendWorkload, revOpsProgress, effectiveTeamEVM } from "@/lib/workload";
+import { dualForecast } from "@/lib/forecast";
 
 const AIChatPanel = dynamicImport(() => import("./AIChatPanel"), { ssr: false });
 
@@ -254,11 +255,12 @@ export default function BODDashboard({ initialData }: Props) {
   const ebitdaMargin = d.revenue > 0 ? (d.ebitda / d.revenue) * 100 : 0;
   const wf = d.operations?.workforce;
   const teams = wf?.teams ?? [];
-  const teamRollup = teams.length ? rollupEVM(teams.map((t) => t.evm)) : null;
+  const fpa = dashData.fpa;
+  const teamRollup = teams.length ? rollupEVM(teams.map((t) => effectiveTeamEVM(t, fpa))) : null;
   const execBrief = generateExecutiveBrief(d);
   const revops = revOpsProgress(d);
-  const workloadRecs = teams.map((t) => recommendWorkload(t));
-  const fpa = dashData.fpa;
+  const workloadRecs = teams.map((t) => recommendWorkload(t, 16, fpa));
+  const forecast = fpa ? dualForecast(fpa) : null;
   const fpaMonths = fpa?.teams[0]?.monthly.map((m) => m.month) ?? [];
   // Latest closed month (max index with a GP actual across teams) for the dept pipeline combo.
   const fpaLastIdx = fpa ? Math.max(-1, ...fpa.teams.flatMap((t) => t.monthly.map((m, i) => (m.gpActual !== null ? i : -1)))) : -1;
@@ -1080,7 +1082,7 @@ export default function BODDashboard({ initialData }: Props) {
 
                    {/* Per-team headcount + cost + EVM */}
                    <Card>
-                      <CardHeader title="Workforce & Cost by Team" sub="Headcount, cost and Earned Value per team — RM+Bank, S&F, Renew, ATA, Marketing, Ops" />
+                      <CardHeader title="Workforce & Cost by Team" sub="EVM team revenue (SPI=GP đạt/target, CPI=GP/chi phí người) · team support EVM chuẩn" />
                       {teams.length ? (
                       <div className="overflow-x-auto">
                         <table className="w-full text-[12px] min-w-[840px]">
@@ -1100,10 +1102,11 @@ export default function BODDashboard({ initialData }: Props) {
                           </thead>
                           <tbody className="divide-y divide-slate-50">
                             {teams.map((t) => {
-                              const e = computeEVM(t.evm);
+                              const ev = effectiveTeamEVM(t, fpa);
+                              const e = computeEVM(ev);
                               return (
                                 <tr key={t.team} className="hover:bg-slate-50/50">
-                                  <td className="py-3 pr-2 font-black text-slate-700 whitespace-nowrap">{t.team}</td>
+                                  <td className="py-3 pr-2 font-black text-slate-700 whitespace-nowrap">{t.team} <Badge label={t.type === "revenue" ? "Rev" : "Sup"} tone={t.type === "revenue" ? "indigo" : "slate"} /></td>
                                   <td className="text-right px-2 font-bold">{t.headcount}</td>
                                   <td className="text-right px-2">{t.utilization}%</td>
                                   <td className={`text-right px-2 font-bold ${t.attrition >= 16 ? "text-red-500" : t.attrition >= 13 ? "text-amber-500" : "text-slate-500"}`}>{t.attrition}%</td>
@@ -1112,7 +1115,7 @@ export default function BODDashboard({ initialData }: Props) {
                                   <td className="text-right px-2 font-bold text-indigo-600">${fmt1(t.revenueContribution)}M</td>
                                   <td className={`text-right px-2 font-black ${e.spi >= 1 ? "text-emerald-500" : "text-amber-500"}`}>{fmtIndex(e.spi)}</td>
                                   <td className={`text-right px-2 font-black ${e.cpi >= 1 ? "text-emerald-500" : "text-red-500"}`}>{fmtIndex(e.cpi)}</td>
-                                  <td className={`text-right pl-2 font-black ${e.vac >= 0 ? "text-emerald-500" : "text-red-500"}`}>{t.evm.bac > 0 ? (e.vac >= 0 ? "+" : "") + ((e.vac / t.evm.bac) * 100).toFixed(0) : "0"}%</td>
+                                  <td className={`text-right pl-2 font-black ${e.vac >= 0 ? "text-emerald-500" : "text-red-500"}`}>{ev.bac > 0 ? (e.vac >= 0 ? "+" : "") + ((e.vac / ev.bac) * 100).toFixed(0) : "0"}%</td>
                                 </tr>
                               );
                             })}
@@ -1260,21 +1263,61 @@ export default function BODDashboard({ initialData }: Props) {
                    ))}
                 </div>
                 
-                <Card className="bg-[#1e293b] text-white overflow-hidden relative p-8">
-                   <div className="absolute top-0 right-0 p-12 opacity-15 scale-150 rotate-12">
-                      <Sparkles size={160} />
-                   </div>
-                   <div className="relative">
-                      <CardHeader title="AI Forecast Intelligence" sub="Sensitivity analysis based on current Salesforce pipeline" />
-                      <div className="flex flex-col md:flex-row gap-12 items-center mt-6">
-                         <div className="text-5xl font-black text-emerald-400 drop-shadow-lg">+12.4%</div>
-                         <p className="text-base font-bold text-slate-300 leading-relaxed max-w-2xl">
-                            Pipeline analysis confirms a potential 12.4% upside to the {d.label} revenue targets. Primarily driven by 
-                            Service Bundle pricebook performance.
-                         </p>
+                {forecast && fpa && (
+                <Card>
+                   <CardHeader title="Dual Forecast & Confidence" sub="Kết hợp Bayesian (workbook) + Salesforce pipeline (median báo giá × % stage) → độ tin cậy" />
+                   <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-6">
+                      <div className="bg-[#0c1430] text-white rounded-2xl p-5 lg:col-span-1 flex flex-col justify-center">
+                         <div className="text-[10px] font-black uppercase tracking-widest text-indigo-300 mb-1">Blended GP Q2</div>
+                         <div className="text-3xl font-black">${fmt1(forecast.blendedTotal)}M</div>
+                         <div className="mt-3 text-[10px] font-black uppercase tracking-widest text-indigo-300 mb-1">Confidence</div>
+                         <div className={`text-2xl font-black ${forecast.confidencePct >= 80 ? "text-emerald-400" : forecast.confidencePct >= 60 ? "text-amber-400" : "text-red-400"}`}>{forecast.confidencePct}%</div>
+                      </div>
+                      <div className="lg:col-span-3 grid grid-cols-3 gap-4">
+                         <div className="bg-slate-50 rounded-2xl p-4 text-center"><div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Bayesian</div><div className="text-xl font-black text-slate-800">${fmt1(forecast.bayesTotal)}M</div></div>
+                         <div className="bg-slate-50 rounded-2xl p-4 text-center"><div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Pipeline</div><div className="text-xl font-black text-slate-800">${fmt1(forecast.pipelineTotal)}M</div></div>
+                         <div className="bg-slate-50 rounded-2xl p-4 text-center"><div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Target Q2</div><div className="text-xl font-black text-slate-800">${fmt1(fpa.q2TargetGP)}M</div></div>
                       </div>
                    </div>
+                   <div className="overflow-x-auto">
+                     <table className="w-full text-[12px] min-w-[620px]">
+                       <thead>
+                         <tr className="text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-100">
+                           <th className="text-left py-3 pr-2">Team</th>
+                           <th className="text-right px-2">Bayesian</th>
+                           <th className="text-right px-2">Pipeline</th>
+                           <th className="text-right px-2">Blended</th>
+                           <th className="text-right px-2">Đồng thuận</th>
+                           <th className="text-right pl-2">Confidence</th>
+                         </tr>
+                       </thead>
+                       <tbody className="divide-y divide-slate-50">
+                         {forecast.teams.map((t) => (
+                           <tr key={t.team} className="hover:bg-slate-50/50">
+                             <td className="py-3 pr-2 font-black text-slate-700 whitespace-nowrap">{t.team}</td>
+                             <td className="text-right px-2 text-slate-600">${fmt1(t.bayes)}M</td>
+                             <td className="text-right px-2 text-slate-600">${fmt1(t.pipeline)}M</td>
+                             <td className="text-right px-2 font-black text-indigo-600">${fmt1(t.blended)}M</td>
+                             <td className="text-right px-2 text-slate-500">{t.agreementPct}%</td>
+                             <td className={`text-right pl-2 font-black ${t.confidencePct >= 80 ? "text-emerald-500" : t.confidencePct >= 60 ? "text-amber-500" : "text-red-500"}`}>{t.confidencePct}%</td>
+                           </tr>
+                         ))}
+                       </tbody>
+                     </table>
+                   </div>
+                   <div className="mt-5 grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {fpa.scenarios.map((s) => (
+                        <div key={s.name} className="border border-slate-100 rounded-2xl p-4">
+                           <div className="text-[11px] font-black text-slate-700">{s.name}</div>
+                           <div className="text-[10px] text-slate-400 font-bold mb-2">Prob {Math.round(s.prob * 100)}%</div>
+                           <div className="text-lg font-black text-slate-800">${fmt1(s.gpForecast)}M <span className="text-[11px] font-bold text-slate-400">GP</span></div>
+                           <div className="text-[10px] text-slate-500 font-medium mt-1">{Math.round(s.achievement * 100)}% đạt · Rev ${fmt1(s.revenueEst)}M</div>
+                        </div>
+                      ))}
+                   </div>
+                   <div className="mt-3 text-[10px] text-slate-400 font-medium">CI 80%: ${fmt1(fpa.ci.p80Low)}M–${fmt1(fpa.ci.p80High)}M · CI 95%: ${fmt1(fpa.ci.p95Low)}M–${fmt1(fpa.ci.p95High)}M. Confidence cao khi 2 mô hình đồng thuận và data coverage tốt.</div>
                 </Card>
+                )}
              </div>
           ) : view === "briefing" ? (
              <div className="max-w-4xl mx-auto py-12 px-10 bg-white shadow-2xl min-h-[1000px] animate-in fade-in zoom-in duration-700 font-serif text-slate-900 border border-slate-100 rounded-lg print:shadow-none print:border-none print:m-0 print:p-0 print:max-w-none">

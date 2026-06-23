@@ -8,8 +8,28 @@
  * swap in an LLM later behind the same signature if desired.
  */
 
-import type { PeriodData, TeamWorkforce } from "@/types/dashboard";
+import type { PeriodData, TeamWorkforce, EVMInput, FpaModel } from "@/types/dashboard";
 import { computeEVM } from "./evm";
+
+/**
+ * EVM inputs for a team, keyed to its type:
+ *  - revenue team → Earned Value = GP actually earned, Planned Value = GP target
+ *    to date (the minimum work to hit the revenue), Actual Cost = people cost.
+ *    So SPI = GP earned / GP planned, CPI = GP earned / people cost (ROI-style).
+ *  - support team → standard EVM from its stored inputs.
+ */
+export function effectiveTeamEVM(t: TeamWorkforce, fpa?: FpaModel): EVMInput {
+  if (t.type === "revenue" && fpa) {
+    const ft = fpa.teams.find((x) => x.team === t.team);
+    if (ft) {
+      const closed = ft.monthly.filter((m) => m.gpActual !== null);
+      const ev = closed.reduce((a, m) => a + (m.gpActual ?? 0), 0);
+      const pv = closed.reduce((a, m) => a + m.gpTarget, 0);
+      return { bac: ft.q2Target, pv, ev, ac: t.totalCost };
+    }
+  }
+  return t.evm;
+}
 
 export interface WorkloadRec {
   team: string;
@@ -28,8 +48,8 @@ export interface WorkloadRec {
  * Recommend next-month workload for a team from utilization, EVM and attrition.
  * @param attritionHigh  attrition % considered "high" (from settings.thresholds)
  */
-export function recommendWorkload(t: TeamWorkforce, attritionHigh = 16): WorkloadRec {
-  const e = computeEVM(t.evm);
+export function recommendWorkload(t: TeamWorkforce, attritionHigh = 16, fpa?: FpaModel): WorkloadRec {
+  const e = computeEVM(effectiveTeamEVM(t, fpa));
   const u = t.utilization;
 
   let status: WorkloadRec["status"];
