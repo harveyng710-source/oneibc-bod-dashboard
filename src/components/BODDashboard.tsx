@@ -14,14 +14,15 @@ import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
 import dynamicImport from "next/dynamic";
 import {
-  ResponsiveContainer, Area, ComposedChart, LineChart, Line, XAxis, YAxis,
-  CartesianGrid, Tooltip,
+  ResponsiveContainer, Area, Bar, ComposedChart, LineChart, Line, XAxis, YAxis,
+  CartesianGrid, Tooltip, Legend,
 } from "recharts";
 import type { DashboardData, PeriodData, ComparisonMode, EVMInput } from "@/types/dashboard";
 import { colorMap, statusColor, sevColor, scoreTone, fmt1, SCORECARD_META, NAV } from "@/lib/helpers";
 import { computeEVM, rollupEVM, fmtIndex } from "@/lib/evm";
 import { getMetricDoc } from "@/lib/metricDocs";
 import { generateExecutiveBrief, needsLeadComment } from "@/lib/aiReasoning";
+import { recommendWorkload, revOpsProgress } from "@/lib/workload";
 
 const AIChatPanel = dynamicImport(() => import("./AIChatPanel"), { ssr: false });
 
@@ -130,7 +131,9 @@ function KpiCard({ icon: Icon, label, value, target, spark, color, suffix = "M",
   icon: LucideIcon; label: string; value: number; target: number | { base: number; target: number };
   spark?: number[]; color: string; suffix?: string; isPct?: boolean; docKey?: string;
 }) {
-  const deltaVal = isPct ? null : (((value - (target as number)) / (target as number)) * 100);
+  const targetNum = isPct ? null : (target as number);
+  const achievement = targetNum && targetNum > 0 ? (value / targetNum) * 100 : null;
+  const achTone = achievement === null ? "text-slate-400" : achievement >= 100 ? "text-emerald-500" : achievement >= 90 ? "text-amber-500" : "text-red-500";
   return (
     <Card className="hover:shadow-md transition-shadow">
       <div className="flex items-center gap-2 mb-2.5">
@@ -146,9 +149,14 @@ function KpiCard({ icon: Icon, label, value, target, spark, color, suffix = "M",
           <div className="text-xl font-black text-slate-800 leading-none">
             {isPct ? `${value}%` : `$${fmt1(value)}${suffix}`}
           </div>
-          {!isPct && deltaVal !== null && (
-            <div className={`text-[10px] font-bold flex items-center gap-1 mt-1.5 ${deltaVal >= 0 ? "text-emerald-500" : "text-red-500"}`}>
-              {deltaVal >= 0 ? <ArrowUp size={10} /> : <ArrowDown size={10} />} {Math.abs(deltaVal).toFixed(1)}% vs Var
+          {!isPct && targetNum !== null && (
+            <div className="mt-1.5 space-y-0.5">
+              <div className="text-[10px] text-slate-400 font-medium">Target ${fmt1(targetNum)}{suffix}</div>
+              {achievement !== null && (
+                <div className={`text-[10px] font-black flex items-center gap-1 ${achTone}`}>
+                  {achievement >= 100 ? <ArrowUp size={10} /> : <ArrowDown size={10} />} {achievement.toFixed(0)}% đạt target
+                </div>
+              )}
             </div>
           )}
           {isPct && <div className="text-[10px] text-slate-400 mt-1.5 font-medium">Progress to Target</div>}
@@ -178,6 +186,7 @@ export default function BODDashboard({ initialData }: Props) {
   const [view, setView] = useState("overview");
   const [overviewTab, setOverviewTab] = useState<OverviewTab>("pulse");
   const [operationsTab, setOperationsTab] = useState<OperationsTab>("plants");
+  const [varianceChart, setVarianceChart] = useState<"area" | "line" | "bar" | "combo">("area");
   const [periodIdx, setPeriodIdx] = useState(() => Math.max(0, dashData.periods.length - 1));
   const [comparisonMode, setComparisonMode] = useState<ComparisonMode>("budget");
   const [aiChatOpen, setAIChatOpen] = useState(false);
@@ -217,6 +226,8 @@ export default function BODDashboard({ initialData }: Props) {
   const teams = wf?.teams ?? [];
   const teamRollup = teams.length ? rollupEVM(teams.map((t) => t.evm)) : null;
   const execBrief = generateExecutiveBrief(d);
+  const revops = revOpsProgress(d);
+  const workloadRecs = teams.map((t) => recommendWorkload(t));
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
@@ -292,16 +303,19 @@ export default function BODDashboard({ initialData }: Props) {
           </div>
           
           <div className="flex items-center gap-4">
-            <div className="flex bg-slate-100 p-1 rounded-xl gap-1">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest hidden lg:inline">Target</span>
+              <div className="flex bg-slate-100 p-1 rounded-xl gap-1">
                {(["budget", "forecast"] as const).map(m => (
-                 <button 
-                  key={m} 
+                 <button
+                  key={m}
                   onClick={() => setComparisonMode(m)}
                   className={`px-4 py-1.5 text-[10px] font-black rounded-lg transition-all ${comparisonMode === m ? "bg-white text-indigo-600 shadow-sm" : "text-slate-400 hover:text-slate-600"}`}
                  >
-                   VS {m.toUpperCase()}
+                   {m === "budget" ? "Budget" : "Forecast"}
                  </button>
                ))}
+              </div>
             </div>
 
             <select
@@ -480,6 +494,44 @@ export default function BODDashboard({ initialData }: Props) {
                   )}
                 </Card>
 
+                {/* RevOps & Workload */}
+                <Card>
+                  <CardHeader title="RevOps & Workload" sub="Tiến trình RevOps tháng này + đề xuất workload tháng sau (rule-based)" />
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    {[
+                      { l: "Revenue đạt target", k: "revenue", v: revops.revenuePct },
+                      { l: "Forecast progress", k: "forecastProgress", v: revops.forecastPct },
+                      { l: "Pipeline coverage", k: "pipelineCoverage", v: revops.pipeline },
+                    ].map((m) => (
+                      <div key={m.l} className="bg-slate-50 rounded-2xl p-4">
+                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 inline-flex"><InfoTip docKey={m.k}>{m.l}</InfoTip></div>
+                        <div className="text-2xl font-black text-slate-800 mb-2">{Math.round(m.v)}%</div>
+                        <ProgressBar value={Math.min(m.v, 100)} tone={m.v >= 90 ? "emerald" : m.v >= 70 ? "amber" : "red"} thick />
+                      </div>
+                    ))}
+                  </div>
+                  {workloadRecs.length ? (
+                    <div className="space-y-2">
+                      <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Đề xuất workload tháng sau theo team</div>
+                      {workloadRecs.map((r) => (
+                        <div key={r.team} className="flex items-start gap-3 p-3 rounded-2xl hover:bg-slate-50 transition-colors">
+                          <div className="w-28 shrink-0">
+                            <div className="text-[12px] font-black text-slate-700 truncate">{r.team}</div>
+                            <div className="text-[10px] text-slate-400 font-medium">{r.headcount} ppl · {r.utilization}% · SPI {fmtIndex(r.spi)}</div>
+                          </div>
+                          <div className="shrink-0"><Badge label={r.status} tone={r.tone} /></div>
+                          <div className="flex-1 text-[11px] text-slate-500 font-medium leading-relaxed">{r.recommendation}</div>
+                          {r.headcountDelta > 0 && (
+                            <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-lg shrink-0">+{r.headcountDelta} HC</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center text-[11px] text-slate-400 py-8 font-medium">Chưa có dữ liệu team cho {d.label}.</div>
+                  )}
+                </Card>
+
                 {/* Workforce snapshot + Stories */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   <Card>
@@ -547,8 +599,22 @@ export default function BODDashboard({ initialData }: Props) {
                 </div>
                 ) : overviewTab === "variance" ? (
                 <div className="space-y-6">
-                   <Card className="flex flex-col h-[440px]">
-                      <CardHeader title="Variance Intelligence" sub={`Real-time Revenue vs ${currentTargetLabel} Deviation`} docKey="variance" />
+                   <Card className="flex flex-col h-[460px]">
+                      <CardHeader
+                        title="Variance Intelligence"
+                        sub={`Actual vs ${currentTargetLabel} & Base — chọn loại biểu đồ`}
+                        docKey="variance"
+                        right={
+                          <div className="flex bg-slate-100 p-1 rounded-xl gap-1">
+                            {([["area", "Area"], ["line", "Line"], ["bar", "Bar"], ["combo", "Combo"]] as const).map(([k, lbl]) => (
+                              <button key={k} onClick={() => setVarianceChart(k)}
+                                className={`px-3 py-1 text-[10px] font-black rounded-lg transition-all ${varianceChart === k ? "bg-white text-indigo-600 shadow-sm" : "text-slate-400 hover:text-slate-600"}`}>
+                                {lbl}
+                              </button>
+                            ))}
+                          </div>
+                        }
+                      />
                       <div className="flex-1">
                         <ResponsiveContainer width="100%" height="100%">
                           <ComposedChart data={d.chart}>
@@ -562,8 +628,13 @@ export default function BODDashboard({ initialData }: Props) {
                             <XAxis dataKey="q" axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 700, fill: '#94a3b8'}} />
                             <YAxis axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 700, fill: '#94a3b8'}} />
                             <Tooltip contentStyle={{borderRadius: '20px', border: 'none'}} />
-                            <Area type="monotone" name="Actual" dataKey="actual" stroke="#6366f1" strokeWidth={4} fillOpacity={1} fill="url(#colorPulse)" />
-                            <Line type="monotone" name="Base" dataKey="base" stroke="#94a3b8" strokeWidth={2} strokeDasharray="4 4" dot={false} />
+                            <Legend wrapperStyle={{ fontSize: 11, fontWeight: 700 }} />
+                            {varianceChart === "area" && <Area type="monotone" name="Actual" dataKey="actual" stroke="#6366f1" strokeWidth={4} fillOpacity={1} fill="url(#colorPulse)" />}
+                            {varianceChart === "line" && <Line type="monotone" name="Actual" dataKey="actual" stroke="#6366f1" strokeWidth={4} dot={{ r: 4 }} />}
+                            {(varianceChart === "bar" || varianceChart === "combo") && <Bar name="Actual" dataKey="actual" fill="#6366f1" radius={[6, 6, 0, 0]} barSize={28} />}
+                            {varianceChart === "combo"
+                              ? <Area type="monotone" name="Base" dataKey="base" stroke="#94a3b8" strokeWidth={2} fill="#94a3b8" fillOpacity={0.08} />
+                              : <Line type="monotone" name="Base" dataKey="base" stroke="#94a3b8" strokeWidth={2} strokeDasharray="4 4" dot={false} />}
                             <Line type="monotone" name="Target" dataKey="target" stroke="#0ea5e9" strokeWidth={2} dot={false} />
                           </ComposedChart>
                         </ResponsiveContainer>

@@ -46,6 +46,13 @@ export const METRIC_DOCS: Record<string, MetricDoc> = {
     dataFlow: "Sheet (section=kpi, metric=forecast_base & forecast_target) → parser → dashboard.",
   },
 
+  pipelineCoverage: {
+    label: "Pipeline Coverage",
+    what: "Tỷ lệ phủ pipeline so với mục tiêu doanh thu — chỉ báo sức khỏe RevOps đầu phễu.",
+    logic: "Lấy từ sub-KPI 'Pipeline Coverage Ratio' của trụ Customer trong scorecard.",
+    dataFlow: "Salesforce pipeline → Sheet (section=scorecard, pillar=customer) → parser → dashboard.",
+  },
+
   // ── Scorecard 4 trụ cột ─────────────────────────────────────────────────
   scorecard: {
     label: "Strategic Health Scorecard",
