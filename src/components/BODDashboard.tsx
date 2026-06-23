@@ -5,7 +5,7 @@
  * OneIBC AI FP&A Dashboard — Real-time Financial Planning & Analysis Analyst.
  */
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, Fragment } from "react";
 import { createPortal } from "react-dom";
 import {
   Activity, Wallet, TrendingUp, Target,
@@ -254,6 +254,8 @@ export default function BODDashboard({ initialData }: Props) {
   const execBrief = generateExecutiveBrief(d);
   const revops = revOpsProgress(d);
   const workloadRecs = teams.map((t) => recommendWorkload(t));
+  const fpa = dashData.fpa;
+  const fpaMonths = fpa?.teams[0]?.monthly.map((m) => m.month) ?? [];
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
@@ -719,6 +721,49 @@ export default function BODDashboard({ initialData }: Props) {
                         </tbody>
                       </table>
                    </Card>
+
+                   {fpa && (
+                   <Card>
+                      <CardHeader title="Department Revenue & Gross Profit by Month" sub="Chi tiết Rev/GP từng department theo tháng (M1–M6, $M) — nguồn FP&A workbook" />
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-[12px] min-w-[760px]">
+                          <thead>
+                            <tr className="text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-100">
+                              <th className="text-left py-3 pr-2">Department</th>
+                              <th className="text-left px-2">Metric</th>
+                              {fpaMonths.map((m) => <th key={m} className="text-right px-2">{m}</th>)}
+                              <th className="text-right pl-2">Total</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-50">
+                            {fpa.teams.map((t) => {
+                              const gpTotal = t.monthly.reduce((a, m) => a + (m.gpActual ?? 0), 0);
+                              const revTotal = t.monthly.reduce((a, m) => a + (m.revenue ?? 0), 0);
+                              return (
+                                <Fragment key={t.team}>
+                                  <tr className="hover:bg-slate-50/50">
+                                    <td rowSpan={2} className="py-3 pr-2 font-black text-slate-700 align-top whitespace-nowrap">{t.team}</td>
+                                    <td className="px-2 text-[10px] font-black uppercase tracking-widest text-indigo-500">Revenue</td>
+                                    {t.monthly.map((m) => <td key={m.month} className="text-right px-2 text-slate-600">{m.revenue !== null ? `$${fmt1(m.revenue)}` : "—"}</td>)}
+                                    <td className="text-right pl-2 font-black text-slate-800">${fmt1(revTotal)}</td>
+                                  </tr>
+                                  <tr className="hover:bg-slate-50/50 border-b border-slate-100">
+                                    <td className="px-2 text-[10px] font-black uppercase tracking-widest text-emerald-500">Gross Profit</td>
+                                    {t.monthly.map((m) => {
+                                      const under = m.gpActual !== null && m.gpActual < m.gpTarget;
+                                      return <td key={m.month} className={`text-right px-2 font-bold ${m.gpActual === null ? "text-slate-300" : under ? "text-amber-600" : "text-emerald-600"}`}>{m.gpActual !== null ? `$${fmt1(m.gpActual)}` : "—"}</td>;
+                                    })}
+                                    <td className="text-right pl-2 font-black text-emerald-600">${fmt1(gpTotal)}</td>
+                                  </tr>
+                                </Fragment>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                      <div className="mt-3 text-[10px] text-slate-400 font-medium">GP tô vàng = dưới target tháng đó · Số liệu $M.</div>
+                   </Card>
+                   )}
                 </div>
                 ) : (
                 <div className="space-y-6">
@@ -780,6 +825,54 @@ export default function BODDashboard({ initialData }: Props) {
                          )}
                       </Card>
                    </div>
+
+                   {wf?.teams?.length ? (
+                   <Card>
+                      <CardHeader title="Individuals Productivity" sub="Năng suất bình quân đầu người theo team — Rev/head, GP đạt, utilization" />
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-[12px] min-w-[680px]">
+                          <thead>
+                            <tr className="text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-100">
+                              <th className="text-left py-3 pr-2">Team</th>
+                              <th className="text-left px-2">Loại</th>
+                              <th className="text-right px-2"><InfoTip docKey="headcount">HC</InfoTip></th>
+                              <th className="text-right px-2">Rev/Head</th>
+                              <th className="text-right px-2">GP đạt</th>
+                              <th className="text-right px-2"><InfoTip docKey="utilization">Util</InfoTip></th>
+                              <th className="text-left pl-2 w-32">Năng suất</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-50">
+                            {(() => {
+                              const maxRPH = Math.max(...wf.teams.map((t) => (t.headcount > 0 ? t.revenueContribution / t.headcount : 0)), 0.0001);
+                              return wf.teams.map((t) => {
+                                const rph = t.headcount > 0 ? (t.revenueContribution / t.headcount) : 0; // $M/head
+                                const ft = fpa?.teams.find((x) => x.team === t.team);
+                                let achieve: number | null = null;
+                                if (ft) {
+                                  const ta = ft.monthly.reduce((a, m) => a + (m.gpActual ?? 0), 0);
+                                  const tt = ft.monthly.filter((m) => m.gpActual !== null).reduce((a, m) => a + m.gpTarget, 0);
+                                  achieve = tt > 0 ? (ta / tt) * 100 : null;
+                                }
+                                return (
+                                  <tr key={t.team} className="hover:bg-slate-50/50">
+                                    <td className="py-3 pr-2 font-black text-slate-700 whitespace-nowrap">{t.team}</td>
+                                    <td className="px-2"><Badge label={t.type === "revenue" ? "Revenue" : "Support"} tone={t.type === "revenue" ? "indigo" : "slate"} /></td>
+                                    <td className="text-right px-2 font-bold">{t.headcount}</td>
+                                    <td className="text-right px-2 font-black text-indigo-600">${Math.round(rph * 1000)}K</td>
+                                    <td className={`text-right px-2 font-black ${achieve === null ? "text-slate-300" : achieve >= 100 ? "text-emerald-500" : achieve >= 80 ? "text-amber-500" : "text-red-500"}`}>{achieve === null ? "—" : `${achieve.toFixed(0)}%`}</td>
+                                    <td className="text-right px-2 text-slate-500">{t.utilization}%</td>
+                                    <td className="pl-2"><ProgressBar value={(rph / maxRPH) * 100} tone={t.type === "revenue" ? "emerald" : "slate"} thick /></td>
+                                  </tr>
+                                );
+                              });
+                            })()}
+                          </tbody>
+                        </table>
+                      </div>
+                      <div className="mt-3 text-[10px] text-slate-400 font-medium">Rev/Head = doanh thu đóng góp / headcount. Support team không gắn doanh thu trực tiếp.</div>
+                   </Card>
+                   ) : null}
                 </div>
                 )}
              </div>

@@ -33,6 +33,7 @@ export const colorMap: Record<string, { bg: string; text: string; dot: string; b
   emerald: { bg: "bg-emerald-50", text: "text-emerald-700", dot: "bg-emerald-500", bar: "#10b981" },
   amber:   { bg: "bg-amber-50",   text: "text-amber-700",   dot: "bg-amber-500",   bar: "#f59e0b" },
   red:     { bg: "bg-red-50",     text: "text-red-700",     dot: "bg-red-500",     bar: "#ef4444" },
+  indigo:  { bg: "bg-indigo-50",  text: "text-indigo-700",  dot: "bg-indigo-500",  bar: "#6366f1" },
   slate:   { bg: "bg-slate-100",  text: "text-slate-600",   dot: "bg-slate-400",   bar: "#94a3b8" },
 };
 
