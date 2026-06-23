@@ -29,6 +29,13 @@ const OVERVIEW_TABS = [
 ] as const;
 type OverviewTab = (typeof OVERVIEW_TABS)[number]["id"];
 
+// Sub-sections inside the Operations view
+const OPERATIONS_TABS = [
+  { id: "plants",    label: "Plants & Supplier" },
+  { id: "workforce", label: "Workforce & Cost" },
+] as const;
+type OperationsTab = (typeof OPERATIONS_TABS)[number]["id"];
+
 // ─── Micro-components ────────────────────────────────────────────────────────
 
 function Badge({ label, tone }: { label: string; tone: string }) {
@@ -141,6 +148,7 @@ export default function BODDashboard({ initialData }: Props) {
   const [dashData, setDashData] = useState<DashboardData>(initialData);
   const [view, setView] = useState("overview");
   const [overviewTab, setOverviewTab] = useState<OverviewTab>("pulse");
+  const [operationsTab, setOperationsTab] = useState<OperationsTab>("plants");
   const [periodIdx, setPeriodIdx] = useState(() => Math.max(0, dashData.periods.length - 1));
   const [comparisonMode, setComparisonMode] = useState<ComparisonMode>("budget");
   const [aiChatOpen, setAIChatOpen] = useState(false);
@@ -167,6 +175,8 @@ export default function BODDashboard({ initialData }: Props) {
   const grossMargin = d.revenue > 0 ? (d.gp / d.revenue) * 100 : 0;
   const ebitdaMargin = d.revenue > 0 ? (d.ebitda / d.revenue) * 100 : 0;
   const wf = d.operations?.workforce;
+  const teams = wf?.teams ?? [];
+  const teamRollup = teams.length ? rollupEVM(teams.map((t) => t.evm)) : null;
 
   const handlePrint = useCallback(() => {
     showToast("Preparing report for PDF export...");
@@ -618,31 +628,54 @@ export default function BODDashboard({ initialData }: Props) {
                 )}
              </div>
           ) : view === "operations" ? (
-             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+             <div className="space-y-6">
+                {/* ── Operations sub-section tabs ── */}
+                <div className="flex items-center gap-1 border-b border-slate-200">
+                  {OPERATIONS_TABS.map((t) => (
+                    <button
+                      key={t.id}
+                      onClick={() => setOperationsTab(t.id)}
+                      className={`px-5 py-3 text-[12px] font-black rounded-t-xl -mb-px border-b-2 transition-all ${
+                        operationsTab === t.id
+                          ? "border-indigo-600 text-indigo-600 bg-white"
+                          : "border-transparent text-slate-400 hover:text-slate-600"
+                      }`}
+                    >
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+
+                {operationsTab === "plants" ? (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                    <Card>
                       <CardHeader title="Fulfillment Plants (Centers)" sub="Operational performance by Location" />
+                      {d.operations?.serviceCenters?.length ? (
                       <div className="space-y-4">
-                         {d.operations?.serviceCenters.map(sc => (
+                         {d.operations.serviceCenters.map(sc => (
                            <div key={sc.name} className="flex items-center justify-between p-6 rounded-3xl bg-slate-50 border border-slate-100 hover:border-indigo-200 transition-all">
                               <div>
                                  <div className="text-base font-black text-slate-800">{sc.name}</div>
                                  <Badge label={sc.type} tone={sc.type === 'HQ' ? 'indigo' : 'slate'} />
                               </div>
                               <div className="text-right">
-                                 <div className="text-xl font-black text-slate-800">${sc.actual}M</div>
+                                 <div className="text-xl font-black text-slate-800">${fmt1(sc.actual)}M</div>
                                  <div className={`text-[10px] font-bold ${sc.actual > sc.target ? 'text-red-500' : 'text-emerald-500'}`}>
-                                   Var: {sc.actual > sc.target ? '+' : '-'}${Math.abs(sc.actual - sc.target).toFixed(2)}M
+                                   Var: {sc.actual > sc.target ? '+' : '-'}${Math.abs(sc.actual - sc.target).toFixed(2)}M vs target
                                  </div>
                               </div>
                            </div>
                          ))}
                       </div>
+                      ) : (
+                      <div className="text-center text-[11px] text-slate-400 py-12 font-medium">No plant/center data for {d.label}.</div>
+                      )}
                    </Card>
                    <Card>
                       <CardHeader title="Supplier & Bank Ecosystem" sub="Financial Integrity & Spend" />
+                      {d.operations?.suppliers?.length ? (
                       <div className="space-y-8">
-                         {d.operations?.suppliers.map(sup => (
+                         {d.operations.suppliers.map(sup => (
                            <div key={sup.name} className="p-5 rounded-3xl border border-slate-50 shadow-sm">
                               <div className="flex justify-between items-center mb-4">
                                  <div className="text-sm font-black text-slate-800 flex items-center gap-3">
@@ -654,31 +687,102 @@ export default function BODDashboard({ initialData }: Props) {
                            </div>
                          ))}
                       </div>
+                      ) : (
+                      <div className="text-center text-[11px] text-slate-400 py-12 font-medium">No supplier data for {d.label}.</div>
+                      )}
                    </Card>
                 </div>
-
-                {/* Workforce Analysis Card */}
-                <Card>
-                   <CardHeader title="Workforce Intelligence" sub="Efficiency, Utilization & Capacity tracking" />
-                   <div className="grid grid-cols-1 md:grid-cols-4 gap-6 py-4">
-                      <div className="text-center p-6 bg-slate-50 rounded-3xl">
-                         <div className="text-[10px] font-black text-slate-400 uppercase mb-2">Total Headcount</div>
-                         <div className="text-3xl font-black text-slate-800">{d.operations?.workforce?.headcount || 0}</div>
-                      </div>
-                      <div className="text-center p-6 bg-slate-50 rounded-3xl">
-                         <div className="text-[10px] font-black text-slate-400 uppercase mb-2">Capacity Utilization</div>
-                         <div className="text-3xl font-black text-indigo-600">{d.operations?.workforce?.utilization || 0}%</div>
-                      </div>
-                      <div className="text-center p-6 bg-slate-50 rounded-3xl">
-                         <div className="text-[10px] font-black text-slate-400 uppercase mb-2">Attrition Rate</div>
-                         <div className="text-3xl font-black text-amber-500">{d.operations?.workforce?.attrition || 0}%</div>
-                      </div>
-                      <div className="text-center p-6 bg-slate-50 rounded-3xl">
-                         <div className="text-[10px] font-black text-slate-400 uppercase mb-2">Cost per Head</div>
-                         <div className="text-3xl font-black text-slate-800">${d.operations?.workforce?.costPerHead || 0}K</div>
-                      </div>
+                ) : (
+                <div className="space-y-6">
+                {wf ? (
+                <>
+                   {/* Company-wide aggregates */}
+                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <Card><div className="text-[10px] font-black text-slate-400 uppercase mb-2 tracking-widest">Total Headcount</div><div className="text-3xl font-black text-slate-800">{wf.headcount}</div></Card>
+                      <Card><div className="text-[10px] font-black text-slate-400 uppercase mb-2 tracking-widest">Capacity Utilization</div><div className="text-3xl font-black text-indigo-600">{wf.utilization}%</div></Card>
+                      <Card><div className="text-[10px] font-black text-slate-400 uppercase mb-2 tracking-widest">Attrition Rate</div><div className="text-3xl font-black text-amber-500">{wf.attrition}%</div></Card>
+                      <Card><div className="text-[10px] font-black text-slate-400 uppercase mb-2 tracking-widest">Cost per Head</div><div className="text-3xl font-black text-slate-800">${wf.costPerHead}K</div></Card>
                    </div>
-                </Card>
+
+                   {/* Team-level EVM rollup */}
+                   {teamRollup && (
+                   <Card>
+                      <CardHeader
+                        title="Workforce Earned Value (EVM rollup)"
+                        sub="People budget vs delivered value across all teams"
+                        right={<Badge label={teamRollup.health === "ahead" ? "Ahead" : teamRollup.health === "behind" ? "Behind" : "On Track"} tone={teamRollup.health === "ahead" ? "emerald" : teamRollup.health === "behind" ? "red" : "amber"} />}
+                      />
+                      <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+                        {[
+                          { l: "BAC", v: `$${fmt1(teamRollup.bac)}M` },
+                          { l: "AC",  v: `$${fmt1(teamRollup.ac)}M` },
+                          { l: "SPI", v: fmtIndex(teamRollup.spi) },
+                          { l: "CPI", v: fmtIndex(teamRollup.cpi) },
+                          { l: "EAC", v: `$${fmt1(teamRollup.eac)}M` },
+                          { l: "VAC", v: `$${fmt1(teamRollup.vac)}M` },
+                        ].map((m) => (
+                          <div key={m.l} className="bg-slate-50 rounded-2xl p-4 text-center">
+                            <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5">{m.l}</div>
+                            <div className="text-lg font-black text-slate-800">{m.v}</div>
+                          </div>
+                        ))}
+                      </div>
+                   </Card>
+                   )}
+
+                   {/* Per-team headcount + cost + EVM */}
+                   <Card>
+                      <CardHeader title="Workforce & Cost by Team" sub="Headcount, cost and Earned Value per team — RM+Bank, S&F, Renew, ATA, Marketing, Ops" />
+                      {teams.length ? (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-[12px] min-w-[840px]">
+                          <thead>
+                            <tr className="text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-100">
+                              <th className="text-left py-3 pr-2">Team</th>
+                              <th className="text-right px-2">HC</th>
+                              <th className="text-right px-2">Util</th>
+                              <th className="text-right px-2">Attr</th>
+                              <th className="text-right px-2">Cost/Head</th>
+                              <th className="text-right px-2">Total Cost</th>
+                              <th className="text-right px-2">Rev Contrib</th>
+                              <th className="text-right px-2">SPI</th>
+                              <th className="text-right px-2">CPI</th>
+                              <th className="text-right px-2">EAC</th>
+                              <th className="text-right pl-2">VAC</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-50">
+                            {teams.map((t) => {
+                              const e = computeEVM(t.evm);
+                              return (
+                                <tr key={t.team} className="hover:bg-slate-50/50">
+                                  <td className="py-3 pr-2 font-black text-slate-700 whitespace-nowrap">{t.team}</td>
+                                  <td className="text-right px-2 font-bold">{t.headcount}</td>
+                                  <td className="text-right px-2">{t.utilization}%</td>
+                                  <td className={`text-right px-2 font-bold ${t.attrition >= 16 ? "text-red-500" : t.attrition >= 13 ? "text-amber-500" : "text-slate-500"}`}>{t.attrition}%</td>
+                                  <td className="text-right px-2 text-slate-500">${t.costPerHead}K</td>
+                                  <td className="text-right px-2 text-slate-500">${fmt1(t.totalCost)}M</td>
+                                  <td className="text-right px-2 font-bold text-indigo-600">${fmt1(t.revenueContribution)}M</td>
+                                  <td className={`text-right px-2 font-black ${e.spi >= 1 ? "text-emerald-500" : "text-amber-500"}`}>{fmtIndex(e.spi)}</td>
+                                  <td className={`text-right px-2 font-black ${e.cpi >= 1 ? "text-emerald-500" : "text-red-500"}`}>{fmtIndex(e.cpi)}</td>
+                                  <td className="text-right px-2 text-slate-500">${fmt1(e.eac)}M</td>
+                                  <td className={`text-right pl-2 font-black ${e.vac >= 0 ? "text-emerald-500" : "text-red-500"}`}>{e.vac >= 0 ? "+" : ""}{fmt1(e.vac)}M</td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                      ) : (
+                      <div className="text-center text-[11px] text-slate-400 py-12 font-medium">No per-team workforce data for {d.label}.</div>
+                      )}
+                   </Card>
+                </>
+                ) : (
+                <Card><div className="text-center text-[11px] text-slate-400 py-16 font-medium">No workforce data available for {d.label}.</div></Card>
+                )}
+                </div>
+                )}
              </div>
           ) : view === "capital" ? (
              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
