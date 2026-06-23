@@ -77,6 +77,15 @@ interface RawRow {
   name?: string;
   council?: string;
   accountable?: string;
+  // EVM + team-workforce columns
+  team?: string;
+  headcount?: string;
+  total_cost?: string;
+  revenue_contribution?: string;
+  bac?: string;
+  pv?: string;
+  ev?: string;
+  ac?: string;
   [key: string]: string | undefined;
 }
 
@@ -198,14 +207,20 @@ function buildFromRows(rows: RawRow[]): DashboardData {
         if (!pd) break;
         const name = str(row.name || row.metric);
         const existing = pd.initiatives.find((i) => i.name === name);
+        const hasEvm = row.bac || row.pv || row.ev || row.ac;
+        const evm = hasEvm
+          ? { bac: num(row.bac), pv: num(row.pv), ev: num(row.ev), ac: num(row.ac) }
+          : undefined;
         if (existing) {
           if (row.status)   existing.status   = str(row.status) as typeof existing.status;
           if (row.progress) existing.progress = num(row.progress);
+          if (evm)          existing.evm      = evm;
         } else {
           pd.initiatives.push({
             name,
             status:   str(row.status) as "On Track" | "At Risk" | "Delayed" || "On Track",
             progress: num(row.progress),
+            ...(evm ? { evm } : {}),
           });
         }
         break;
@@ -319,6 +334,41 @@ function buildFromRows(rows: RawRow[]): DashboardData {
         if (metric === "utilization")    pd.operations.workforce.utilization = num(row.value || row.pct);
         if (metric === "attrition")      pd.operations.workforce.attrition = num(row.value || row.pct);
         if (metric === "cost_per_head")  pd.operations.workforce.costPerHead = num(row.value);
+        break;
+      }
+      // ── Per-team Workforce + EVM (RM+Bank, S&F, Renew, ATA, Marketing, Ops) ──
+      case "team_workforce": {
+        if (!pd) break;
+        if (!pd.operations) pd.operations = { serviceCenters: [], suppliers: [] };
+        if (!pd.operations.workforce) {
+          pd.operations.workforce = { headcount: 0, utilization: 0, attrition: 0, costPerHead: 0, teams: [] };
+        }
+        const wf = pd.operations.workforce;
+        if (!wf.teams) wf.teams = [];
+
+        const teamName = str(row.team || row.name || row.metric);
+        if (!teamName) break;
+        const entry = {
+          team: teamName,
+          headcount: num(row.headcount ?? row.value),
+          utilization: num(row.utilization ?? row.pct),
+          attrition: num(row.attrition),
+          costPerHead: num(row.cost_per_head),
+          totalCost: num(row.total_cost),
+          revenueContribution: num(row.revenue_contribution),
+          evm: { bac: num(row.bac), pv: num(row.pv), ev: num(row.ev), ac: num(row.ac) },
+        };
+        const existing = wf.teams.find((t) => t.team === teamName);
+        if (existing) Object.assign(existing, entry);
+        else wf.teams.push(entry);
+
+        // Recompute company aggregates from the team rows.
+        const totalHead = wf.teams.reduce((a, t) => a + t.headcount, 0);
+        const totalCost = wf.teams.reduce((a, t) => a + t.totalCost, 0);
+        wf.headcount = totalHead;
+        wf.utilization = totalHead > 0 ? Math.round(wf.teams.reduce((a, t) => a + t.utilization * t.headcount, 0) / totalHead) : 0;
+        wf.attrition = totalHead > 0 ? Math.round(wf.teams.reduce((a, t) => a + t.attrition * t.headcount, 0) / totalHead) : 0;
+        wf.costPerHead = totalHead > 0 ? Math.round((totalCost * 1000) / totalHead) : 0;
         break;
       }
       // ── Capital P&L ────────────────────────────────────────────────────────

@@ -48,11 +48,26 @@ export interface ChartPoint {
   target: number;
 }
 
+/**
+ * Earned Value Management raw inputs (all in $M unless noted).
+ * Derived metrics (SV, CV, SPI, CPI, EAC, ETC, VAC, % complete) are
+ * computed from these by `computeEVM()` in lib/evm.ts — never stored,
+ * so the dashboard always shows internally-consistent numbers.
+ */
+export interface EVMInput {
+  bac: number; // Budget At Completion — total approved budget
+  pv: number;  // Planned Value (BCWS) — budgeted cost of work scheduled to date
+  ev: number;  // Earned Value (BCWP) — budgeted cost of work actually performed
+  ac: number;  // Actual Cost (ACWP) — real cost incurred to date
+}
+
 /** Strategic initiative */
 export interface Initiative {
   name: string;
   status: StatusType;
   progress: number; // 0–100
+  /** Optional initiative-level EVM (Phase 1 EVM tier 2) */
+  evm?: EVMInput;
 }
 
 /** Department GP breakdown */
@@ -60,6 +75,21 @@ export interface Department {
   name: string;
   value: number; // in $M
   pct: number;   // percentage of total
+}
+
+/**
+ * Per-team workforce + cost + EVM block.
+ * Teams: RM + Bank, S&F, Renew, ATA, Marketing, Ops, …
+ */
+export interface TeamWorkforce {
+  team: string;
+  headcount: number;
+  utilization: number;        // % capacity utilised
+  attrition: number;          // % annualised
+  costPerHead: number;        // $K / head / period
+  totalCost: number;          // $M total people cost this period
+  revenueContribution: number; // $M revenue/GP attributed to the team
+  evm: EVMInput;              // team-level EVM (Phase 1 EVM tier 1)
 }
 
 /** Data snapshot for one reporting period */
@@ -100,10 +130,13 @@ export interface PeriodData {
     serviceCenters: { name: string; type: "HQ" | "Fulfillment" | "Procurement"; cost: number; actual: number; target: number }[];
     suppliers: { name: string; category: "Bank" | "Agent"; spend: number; performance: number }[];
     workforce?: {
+      // Company-wide aggregates (kept for backward-compatible summary cards)
       headcount: number;
       utilization: number;
       attrition: number;
       costPerHead: number;
+      // Per-team breakdown (RM + Bank, S&F, Renew, ATA, Marketing, Ops, …)
+      teams?: TeamWorkforce[];
     };
   };
   capital?: {
