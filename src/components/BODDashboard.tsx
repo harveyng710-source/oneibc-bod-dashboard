@@ -15,7 +15,7 @@ import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
 import dynamicImport from "next/dynamic";
 import {
-  ResponsiveContainer, Area, Bar, ComposedChart, LineChart, Line, XAxis, YAxis,
+  ResponsiveContainer, Area, Bar, ComposedChart, Line, XAxis, YAxis,
   CartesianGrid, Tooltip, Legend,
 } from "recharts";
 import type { DashboardData, PeriodData, ComparisonMode, EVMInput } from "@/types/dashboard";
@@ -1063,7 +1063,8 @@ export default function BODDashboard({ initialData }: Props) {
                 )}
              </div>
           ) : view === "capital" ? (
-             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <Card className="flex flex-col">
                    <CardHeader title="CEO Executive P&L" sub="Standard P&L Breakdown (Board View)" />
                    <div className="flex-1 overflow-y-auto space-y-1 custom-scrollbar">
@@ -1086,28 +1087,85 @@ export default function BODDashboard({ initialData }: Props) {
                    </div>
                 </Card>
                 <Card>
-                   <CardHeader title="Cash Flow Dynamics" sub="Operational Liquidity Health" />
-                   <div className="h-72 mb-10">
+                   <CardHeader title="Cash Flow Dynamics" sub="Inflow vs Outflow theo nhóm hoạt động, đường Net" />
+                   <div className="h-72 mb-6">
                       <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={d.capital?.cashFlow}>
-                           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f8fafc" />
-                           <XAxis dataKey="category" axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 700, fill: '#94a3b8'}} />
-                           <Tooltip contentStyle={{borderRadius: '20px', border: 'none'}} />
-                           <Line type="stepAfter" dataKey="net" stroke="#6366f1" strokeWidth={6} dot={{ r: 10, fill: '#6366f1', strokeWidth: 5, stroke: '#fff' }} />
-                        </LineChart>
+                        <ComposedChart data={d.capital?.cashFlow} margin={{ top: 8, right: 8, left: 0, bottom: 4 }}>
+                           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                           <XAxis dataKey="category" axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 700, fill: '#475569'}} tickFormatter={(v: string) => v.replace(" Activities", "")} />
+                           <YAxis axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 700, fill: '#94a3b8'}} tickFormatter={(v) => `$${v}M`} />
+                           <Tooltip contentStyle={{borderRadius: '16px', border: 'none', fontSize: 12}} />
+                           <Legend wrapperStyle={{ fontSize: 11, fontWeight: 700 }} />
+                           <Bar name="Inflow" dataKey="inflow" fill="#10b981" radius={[6, 6, 0, 0]} barSize={26} />
+                           <Bar name="Outflow" dataKey="outflow" fill="#f87171" radius={[6, 6, 0, 0]} barSize={26} />
+                           <Line name="Net" type="monotone" dataKey="net" stroke="#6366f1" strokeWidth={3} dot={{ r: 5, fill: '#6366f1' }} />
+                        </ComposedChart>
                       </ResponsiveContainer>
                    </div>
                    <div className="grid grid-cols-3 gap-4">
                       {d.capital?.cashFlow.map(cf => (
-                        <div key={cf.category} className="p-6 bg-slate-50 rounded-[2rem] border border-slate-100 transition-all hover:scale-105">
-                           <div className="text-[10px] text-slate-400 font-bold uppercase mb-2 tracking-widest truncate">{cf.category}</div>
+                        <div key={cf.category} className="p-5 bg-slate-50 rounded-2xl border border-slate-100">
+                           <div className="text-[10px] text-slate-400 font-bold uppercase mb-2 tracking-widest truncate">{cf.category.replace(" Activities", "")}</div>
                            <div className={`text-lg font-black ${cf.net >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                              ${cf.net}M
+                              {cf.net >= 0 ? "+" : ""}${fmt1(cf.net)}M
                            </div>
+                           <div className="text-[9px] text-slate-400 font-medium mt-1">In ${fmt1(cf.inflow)}M · Out ${fmt1(cf.outflow)}M</div>
                         </div>
                       ))}
                    </div>
                 </Card>
+              </div>
+
+              {d.capital?.payables?.length ? (
+              <Card>
+                 <CardHeader
+                   title="Supplier & Bank Payments Tracking"
+                   sub="Khoản phải trả + hạn thanh toán ($M)"
+                   right={(() => {
+                     const overdue = d.capital.payables.filter((p) => p.status === "Overdue").length;
+                     const pendingAmt = d.capital.payables.filter((p) => p.status !== "Paid").reduce((a, p) => a + p.amount, 0);
+                     return <div className="flex items-center gap-2">
+                       {overdue > 0 && <Badge label={`${overdue} quá hạn`} tone="red" />}
+                       <span className="text-[11px] font-black text-slate-500">Chưa trả: ${fmt1(pendingAmt)}M</span>
+                     </div>;
+                   })()}
+                 />
+                 <div className="overflow-x-auto">
+                   <table className="w-full text-[12px] min-w-[640px]">
+                     <thead>
+                       <tr className="text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-100">
+                         <th className="text-left py-3 pr-2">Nhà cung cấp</th>
+                         <th className="text-left px-2">Loại</th>
+                         <th className="text-right px-2">Số tiền</th>
+                         <th className="text-left px-2">Hạn</th>
+                         <th className="text-right px-2">Còn lại</th>
+                         <th className="text-right pl-2">Trạng thái</th>
+                       </tr>
+                     </thead>
+                     <tbody className="divide-y divide-slate-50">
+                       {[...d.capital.payables]
+                         .sort((a, b) => new Date(a.due).getTime() - new Date(b.due).getTime())
+                         .map((p) => {
+                           const days = Math.ceil((new Date(p.due).getTime() - Date.now()) / 86400000);
+                           const tone = p.status === "Paid" ? "emerald" : p.status === "Overdue" ? "red" : "amber";
+                           return (
+                             <tr key={p.supplier} className="hover:bg-slate-50/50">
+                               <td className="py-3 pr-2 font-black text-slate-700 whitespace-nowrap">{p.supplier}</td>
+                               <td className="px-2 text-slate-500">{p.category}</td>
+                               <td className="text-right px-2 font-bold text-slate-800">${fmt1(p.amount)}M</td>
+                               <td className="px-2 text-slate-500 whitespace-nowrap">{p.due}</td>
+                               <td className={`text-right px-2 font-bold ${p.status === "Paid" ? "text-slate-300" : days < 0 ? "text-red-500" : days <= 5 ? "text-amber-500" : "text-slate-500"}`}>
+                                 {p.status === "Paid" ? "—" : days < 0 ? `${Math.abs(days)}d trễ` : `${days}d`}
+                               </td>
+                               <td className="text-right pl-2"><div className="inline-flex"><Badge label={p.status} tone={tone} /></div></td>
+                             </tr>
+                           );
+                         })}
+                     </tbody>
+                   </table>
+                 </div>
+              </Card>
+              ) : null}
              </div>
           ) : view === "insight" ? (
              <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">

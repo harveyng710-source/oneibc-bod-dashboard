@@ -183,6 +183,8 @@ export interface PeriodData {
   capital?: {
     pl: { item: string; actual: number; budget: number; variance: number }[];
     cashFlow: { category: string; inflow: number; outflow: number; net: number }[];
+    /** Supplier/bank payables tracking with deadlines. */
+    payables?: { supplier: string; category: string; amount: number; due: string; status: "Paid" | "Pending" | "Overdue" }[];
   };
   insights?: {
     signal: string;

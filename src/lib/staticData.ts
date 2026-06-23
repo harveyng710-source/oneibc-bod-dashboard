@@ -274,7 +274,15 @@ export const STATIC_DASHBOARD_DATA: DashboardData = {
           { category: "Operating Activities", inflow: 145.0, outflow: 118.0, net: 27.0 },
           { category: "Investing Activities", inflow: 2.0, outflow: 15.0, net: -13.0 },
           { category: "Financing Activities", inflow: 10.0, outflow: 5.0, net: 5.0 },
-        ]
+        ],
+        payables: [
+          { supplier: "HSBC HK", category: "Bank", amount: 0.20, due: "2026-06-28", status: "Pending" },
+          { supplier: "DBS Singapore", category: "Bank", amount: 0.15, due: "2026-06-20", status: "Overdue" },
+          { supplier: "Local Agent HK", category: "Agent", amount: 0.40, due: "2026-07-05", status: "Pending" },
+          { supplier: "Local Agent BVI", category: "Agent", amount: 0.30, due: "2026-06-15", status: "Paid" },
+          { supplier: "Caye Intl Bank (Belize)", category: "Bank", amount: 0.12, due: "2026-07-10", status: "Pending" },
+          { supplier: "Seychelles Registrar", category: "Government", amount: 0.08, due: "2026-06-25", status: "Overdue" },
+        ],
       },
       insights: [
         { signal: "KYC Delay Alert", description: "SLA for HK onboarding dropped by 15% due to bank requirement changes.", category: "Operational", confidence: 0.92, impact: "High" },
