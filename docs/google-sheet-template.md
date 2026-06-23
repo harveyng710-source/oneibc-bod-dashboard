@@ -28,41 +28,39 @@ File mẫu sẵn sàng import: [`public/templates/oneibc-bod-template.csv`](../p
 
 Loader (`googleSheets.ts`) hỗ trợ **cả hai**, ưu tiên multi-tab rồi fallback single-tab.
 
-### A. Workbook nhiều tab — *khuyến nghị cho staff* (spoon-feed)
+### A. Workbook 6 nhóm tab — *khuyến nghị cho staff* (spoon-feed)
 
-Mỗi **section = một tab riêng**, chỉ chứa cột liên quan, có **dòng note hướng dẫn**
-(điền gì + nguồn Salesforce/HRMS/ERP) và **dropdown** cho các cột enum. Staff không
-phải gõ `section`/`period` thừa hay nhìn 70+ cột.
+Gộp 21 section thành **6 tab theo nhóm**. Mỗi dòng có cột **`section`** (dropdown, đã
+điền sẵn ở dòng mẫu) cho biết dòng đó là loại gì; mỗi cột có **dòng note hướng dẫn**
+(điền gì + nguồn Salesforce/HRMS/ERP) và **dropdown** cho các cột enum.
 
 - **Dòng 1** = tên cột (machine key) — không sửa, không đổi thứ tự.
 - **Dòng 2** = note, **luôn bắt đầu bằng `#`** ở ô đầu → loader tự bỏ qua (staff cũng
   có thể chèn dòng ghi chú riêng bằng cách gõ `#` ở ô đầu dòng).
-- **Dòng 3+** = dữ liệu (đã có dòng mẫu).
+- **Dòng 3+** = dữ liệu (đã có dòng mẫu). Một cột có thể dùng cho nhiều section — đọc
+  note để biết section nào dùng cột nào.
 
 File mẫu build sẵn: [`public/templates/OneIBC_BOD_Workbook.xlsx`](../public/templates/OneIBC_BOD_Workbook.xlsx)
-— **Import vào Google Sheets** (File → Import → Upload → *Replace spreadsheet*) là Google
-tự convert thành workbook nhiều tab, giữ nguyên dropdown/định dạng/note.
+— **Import vào Google Sheets** (File → Import → Upload → *Replace spreadsheet*) để Google
+convert thành Google Sheet, giữ nguyên dropdown/định dạng/note.
 
-`section` được suy ra từ **tên tab** (đừng đổi tên tab):
+6 tab (đừng đổi tên tab) và các section bên trong:
 
-| Tab | section | Tab | section |
-|---|---|---|---|
-| `01 · KPI tài chính` | kpi | `12 · Sáng kiến` | initiative |
-| `02 · Dự báo doanh thu` | revenue_targets | `13 · Insight signals` | insight_signal |
-| `03 · Scorecard` | scorecard | `14 · Narrative` | narrative |
-| `04 · Biểu đồ quý` | chart | `15 · Stories` | story |
-| `05 · Phòng ban` | department | `16 · Báo cáo` | report |
-| `06 · Trung tâm vận hành` | operations_center | `17 · FP&A theo tháng` | fpa_monthly |
-| `07 · Đối tác cung ứng` | supply_partner | `18 · FP&A dự báo` | fpa_forecast |
-| `08 · Nhân sự theo team` | team_workforce | `19 · FP&A kịch bản` | fpa_scenario |
-| `09 · P&L vốn` | capital_pl | `20 · FP&A CI` | fpa_ci |
-| `10 · Dòng tiền` | capital_cf | `21 · Công nợ phải trả` | payable |
-| `11 · Rủi ro` | risk | | |
+| Tab | Các section |
+|---|---|
+| `01 · Tài chính` | kpi, revenue_targets, capital_pl, capital_cf, payable |
+| `02 · Vận hành` | department, operations_center, supply_partner |
+| `03 · Nhân sự & Sáng kiến` | team_workforce, initiative |
+| `04 · Scorecard & Rủi ro` | scorecard, chart, risk, insight_signal |
+| `05 · FP&A` | fpa_monthly, fpa_forecast, fpa_scenario, fpa_ci |
+| `06 · Nội dung & Báo cáo` | narrative, story, report |
 
-> Mẹo: một tab đặt tên đúng bằng khóa section (vd `kpi`, `fpa_monthly`) cũng được nhận diện.
-
-- **Service account**: loader liệt kê tab + `batchGet` tất cả tab trong **1 request**.
+- **Service account**: loader liệt kê tab + `batchGet` tất cả tab trong **1 request**;
+  với tab nhóm, `section` lấy từ cột trong mỗi dòng.
 - **Public link**: loader đọc từng tab qua endpoint `gviz` theo tên tab.
+
+> Loader vẫn nhận diện cả layout 1-tab-1-section (đặt tên tab đúng bằng khóa section,
+> vd `kpi`, `fpa_monthly`) — tiện cho power user.
 
 ### B. Sheet phẳng 1 tab (legacy)
 

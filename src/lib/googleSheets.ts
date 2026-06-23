@@ -60,11 +60,39 @@ const TAB_SECTION: Record<string, string> = {
 
 const KNOWN_SECTIONS = new Set(Object.values(TAB_SECTION));
 
-/** Resolve the data section for a tab title, or null if the tab isn't data. */
+// Grouped layout: one tab holds several sections, distinguished by a `section`
+// column on each row (the workbook in public/templates/OneIBC_BOD_Workbook.xlsx).
+const THEMED_TABS = new Set<string>([
+  "01 · Tài chính",
+  "02 · Vận hành",
+  "03 · Nhân sự & Sáng kiến",
+  "04 · Scorecard & Rủi ro",
+  "05 · FP&A",
+  "06 · Nội dung & Báo cáo",
+]);
+
+/** Resolve the section for a single-section tab title, or null if not one. */
 function sectionForTab(title: string): string | null {
   if (TAB_SECTION[title]) return TAB_SECTION[title];
   const norm = title.trim().toLowerCase().replace(/\s+/g, "_");
   return KNOWN_SECTIONS.has(norm) ? norm : null;
+}
+
+type TabKind = { themed: true } | { themed: false; section: string } | null;
+
+/** Classify a tab: themed (multi-section, row-tagged), single-section, or non-data. */
+function tabKind(title: string): TabKind {
+  if (THEMED_TABS.has(title)) return { themed: true };
+  const section = sectionForTab(title);
+  return section ? { themed: false, section } : null;
+}
+
+/** Tabs to read for the public/gviz path: themed first (section from row), then legacy. */
+function knownTabs(): { title: string; section: string | null }[] {
+  return [
+    ...[...THEMED_TABS].map((title) => ({ title, section: null })),
+    ...Object.entries(TAB_SECTION).map(([title, section]) => ({ title, section })),
+  ];
 }
 
 const normHeader = (h: string) => h.trim().toLowerCase().replace(/\s+/g, "_");
@@ -73,10 +101,14 @@ const normHeader = (h: string) => h.trim().toLowerCase().replace(/\s+/g, "_");
 const isGuideRow = (firstCell: unknown) => String(firstCell ?? "").trim().startsWith("#");
 
 /**
- * Turn a tab's raw value matrix (row 0 = headers) into RawRow objects tagged
- * with `section`, dropping the guide row and any '#'-prefixed comment rows.
+ * Turn a tab's raw value matrix (row 0 = headers) into RawRow objects, dropping
+ * the guide row and any '#'-prefixed comment rows.
+ *
+ * @param section - for single-section tabs, the section to tag every row with;
+ *                  pass null for themed tabs where each row carries its own
+ *                  `section` column.
  */
-function rowsFromMatrix(section: string, values: unknown[][]): RawRow[] {
+function rowsFromMatrix(section: string | null, values: unknown[][]): RawRow[] {
   if (!values || values.length < 2) return [];
   const headers = (values[0] as unknown[]).map((h) => normHeader(String(h ?? "")));
   const out: RawRow[] = [];
@@ -85,7 +117,7 @@ function rowsFromMatrix(section: string, values: unknown[][]): RawRow[] {
     if (!r || r.length === 0) continue;
     if (isGuideRow(r[0])) continue;
     if (r.every((c) => String(c ?? "").trim() === "")) continue;
-    const obj: RawRow = { section };
+    const obj: RawRow = section ? { section } : {};
     headers.forEach((h, idx) => {
       if (h) obj[h] = r[idx] != null ? String(r[idx]) : "";
     });
@@ -149,7 +181,7 @@ export async function fetchGoogleSheetMultiTabPublic(
 ): Promise<DashboardData | null> {
   const id = extractId(sheetIdOrUrl);
 
-  const fetchTab = async (title: string, section: string): Promise<RawRow[]> => {
+  const fetchTab = async (title: string, section: string | null): Promise<RawRow[]> => {
     const url =
       `https://docs.google.com/spreadsheets/d/${id}/gviz/tq` +
       `?tqx=out:csv&sheet=${encodeURIComponent(title)}`;
@@ -163,7 +195,7 @@ export async function fetchGoogleSheetMultiTabPublic(
   };
 
   const results = await Promise.all(
-    Object.entries(TAB_SECTION).map(([title, section]) => fetchTab(title, section))
+    knownTabs().map(({ title, section }) => fetchTab(title, section))
   );
   const rows = results.flat();
   if (rows.length === 0) return null;
@@ -248,11 +280,12 @@ export async function fetchGoogleSheetMultiTabAPI(
     fields: "sheets.properties.title",
   });
 
-  const tabs: { title: string; section: string }[] = [];
+  const tabs: { title: string; section: string | null }[] = [];
   for (const s of meta.data.sheets ?? []) {
     const title = s.properties?.title ?? "";
-    const section = sectionForTab(title);
-    if (section) tabs.push({ title, section });
+    const kind = tabKind(title);
+    if (!kind) continue;
+    tabs.push({ title, section: kind.themed ? null : kind.section });
   }
   if (tabs.length === 0) return null;
 
