@@ -131,11 +131,23 @@ function buildFromRows(rows: RawRow[]): DashboardData {
   const periodMap = new Map<string, PeriodData>();
   for (const p of base.periods) periodMap.set(p.period, p);
 
+  // FP&A and payables come from the workbook; reset the sample data the first
+  // time the CSV provides them so static seed values don't leak through.
+  let fpaTouched = false;
+  const payablesReset = new Set<string>();
+  const ensureFpa = () => {
+    if (!fpaTouched) {
+      base.fpa = { q2TargetGP: 0, teams: [], scenarios: [], ci: { p80Low: 0, p80High: 0, p95Low: 0, p95High: 0 } };
+      fpaTouched = true;
+    }
+    return base.fpa!;
+  };
+
   for (const row of rows) {
     const section = str(row.section).toLowerCase();
     const period  = str(row.period).toLowerCase();
 
-    if (!period && !["story", "report", "structural_risk"].includes(section)) continue;
+    if (!period && !["story", "report", "structural_risk", "fpa_monthly", "fpa_forecast", "fpa_scenario", "fpa_ci"].includes(section)) continue;
 
     // Ensure period entry exists
     if (period && !periodMap.has(period)) {
@@ -430,7 +442,96 @@ function buildFromRows(rows: RawRow[]): DashboardData {
         if (metric === "ebitda_forecast")  pd.ebitdaForecast  = num(row.value);
         break;
       }
+      // ── FP&A: per-team monthly GP target/actual + revenue ─────────────────
+      case "fpa_monthly": {
+        const f = ensureFpa();
+        const name = str(row.team || row.name);
+        if (!name) break;
+        let t = f.teams.find((x) => x.team === name);
+        if (!t) {
+          t = { team: name, type: str(row.type).toLowerCase() === "support" ? "support" : "revenue", q2Target: 0, posteriorRate: 0, bayesianForecast: 0, pipelineForecast: 0, confidence: "Medium", monthly: [] };
+          f.teams.push(t);
+        }
+        const month = str(row.month || row.period).toUpperCase();
+        const gpActualRaw = row.gp_actual ?? row.actual;
+        const revRaw = row.revenue ?? row.value;
+        const entry = {
+          month,
+          gpTarget: num(row.gp_target ?? row.target),
+          gpActual: gpActualRaw === undefined || str(gpActualRaw) === "" ? null : num(gpActualRaw),
+          revenue: revRaw === undefined || str(revRaw) === "" ? null : num(revRaw),
+        };
+        const ex = t.monthly.find((m) => m.month === month);
+        if (ex) Object.assign(ex, entry); else t.monthly.push(entry);
+        break;
+      }
+      // ── FP&A: per-team forecast (Bayesian + Salesforce pipeline) ──────────
+      case "fpa_forecast": {
+        const f = ensureFpa();
+        const name = str(row.team || row.name);
+        if (!name) break;
+        let t = f.teams.find((x) => x.team === name);
+        if (!t) {
+          t = { team: name, type: "revenue", q2Target: 0, posteriorRate: 0, bayesianForecast: 0, pipelineForecast: 0, confidence: "Medium", monthly: [] };
+          f.teams.push(t);
+        }
+        if (row.type) t.type = str(row.type).toLowerCase() === "support" ? "support" : "revenue";
+        t.q2Target = num(row.q2_target ?? row.target);
+        t.posteriorRate = num(row.posterior_rate ?? row.pct);
+        t.bayesianForecast = num(row.bayesian ?? row.value);
+        t.pipelineForecast = num(row.pipeline ?? row.base);
+        const conf = str(row.confidence || row.status);
+        t.confidence = /high/i.test(conf) ? "High" : /low/i.test(conf) ? "Low" : "Medium";
+        break;
+      }
+      // ── FP&A: probabilistic scenarios (P20 / P50 / P80) ───────────────────
+      case "fpa_scenario": {
+        const f = ensureFpa();
+        const name = str(row.name || row.scenario || row.metric);
+        if (!name) break;
+        f.scenarios.push({
+          name,
+          prob: num(row.prob ?? row.pct),
+          gpForecast: num(row.gp_forecast ?? row.value),
+          achievement: num(row.achievement ?? row.target),
+          revenueEst: num(row.revenue_est ?? row.base),
+        });
+        break;
+      }
+      // ── FP&A: confidence intervals ────────────────────────────────────────
+      case "fpa_ci": {
+        const f = ensureFpa();
+        f.ci = {
+          p80Low: num(row.p80_low),
+          p80High: num(row.p80_high),
+          p95Low: num(row.p95_low),
+          p95High: num(row.p95_high),
+        };
+        break;
+      }
+      // ── Supplier / bank payables (amount + deadline) ──────────────────────
+      case "payable": {
+        if (!pd) break;
+        if (!pd.capital) pd.capital = { pl: [], cashFlow: [] };
+        if (!payablesReset.has(period)) { pd.capital.payables = []; payablesReset.add(period); }
+        if (!pd.capital.payables) pd.capital.payables = [];
+        const supplier = str(row.supplier || row.name || row.metric);
+        if (!supplier) break;
+        const st = str(row.status);
+        pd.capital.payables.push({
+          supplier,
+          category: str(row.category) || "Other",
+          amount: num(row.amount ?? row.value),
+          due: str(row.due || row.time || row.updated),
+          status: /paid/i.test(st) ? "Paid" : /overdue/i.test(st) ? "Overdue" : "Pending",
+        });
+        break;
+      }
     }
+  }
+
+  if (fpaTouched && base.fpa && !base.fpa.q2TargetGP) {
+    base.fpa.q2TargetGP = base.fpa.teams.reduce((a, t) => a + t.q2Target, 0);
   }
 
   // Rebuild periods array from the map (preserve insertion order of keys)

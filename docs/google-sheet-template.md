@@ -120,6 +120,7 @@ Google Sheet (template này)  ──►  csvParser.ts  ──►  DashboardData 
 | Field | Ý nghĩa | Nguồn |
 |---|---|---|
 | `team` | RM + Bank, S&F, Renew, ATA, Marketing, Ops… | HRMS |
+| `type` | `revenue` (đội tạo doanh thu) hoặc `support` | Phân loại |
 | `headcount` | Số nhân sự | HRMS |
 | `utilization` | % sử dụng năng lực | Timesheet/Ops |
 | `attrition` | % nghỉ việc (quy năm) | HRMS |
@@ -141,6 +142,57 @@ Google Sheet (template này)  ──►  csvParser.ts  ──►  DashboardData 
 |---|---|
 | `category` | Operating/Investing/Financing Activities |
 | `inflow`,`outflow`,`net` | $M |
+
+### `payable` — Supplier/Bank payments + deadline *(theo period)*
+| Field | Ý nghĩa |
+|---|---|
+| `supplier` | Tên nhà cung cấp/bank |
+| `category` | Bank / Agent / Government… |
+| `amount` | Số tiền phải trả ($M) |
+| `due` | Hạn thanh toán (YYYY-MM-DD) |
+| `status` | `Paid` / `Pending` / `Overdue` |
+
+---
+
+## Khối FP&A (từ GP Forecast Masterworkbook) — *cross-period*
+
+> Khi sheet có **bất kỳ** dòng `fpa_*`, toàn bộ khối FP&A mẫu bị thay bằng dữ liệu sheet (không lẫn số mẫu).
+
+### `fpa_monthly` — GP target/actual + Revenue theo team từng tháng
+| Field | Ý nghĩa |
+|---|---|
+| `team` | Tên team (khớp với `team_workforce`) |
+| `type` | `revenue` / `support` (chỉ cần ở dòng đầu mỗi team) |
+| `month` | M1…M6 |
+| `gp_target` | GP mục tiêu tháng ($M) |
+| `gp_actual` | GP thực hiện ($M) — **để trống** nếu tháng chưa chốt |
+| `revenue` | Doanh thu tháng ($M) — để trống nếu chưa có |
+
+### `fpa_forecast` — Forecast kép theo team
+| Field | Ý nghĩa |
+|---|---|
+| `team` | Tên team |
+| `type` | `revenue` / `support` |
+| `q2_target` | GP mục tiêu quý ($M) |
+| `posterior_rate` | Tỷ lệ đạt Bayesian (0–1) |
+| `bayesian` | Forecast Bayesian ($M) = posterior × target |
+| `pipeline` | Forecast Salesforce (median báo giá × % stage, $M) |
+| `confidence` | `High` / `Medium` / `Low` |
+
+### `fpa_scenario` — Kịch bản P20/P50/P80
+| Field | Ý nghĩa |
+|---|---|
+| `name` | Tên kịch bản (P20 · Conservative…) |
+| `prob` | Xác suất (0–1) |
+| `gp_forecast` | GP dự báo ($M) |
+| `achievement` | % đạt (0–1) |
+| `revenue_est` | Doanh thu ước tính ($M) |
+
+### `fpa_ci` — Khoảng tin cậy (1 dòng)
+| Field | Ý nghĩa |
+|---|---|
+| `p80_low`,`p80_high` | CI 80% GP ($M) |
+| `p95_low`,`p95_high` | CI 95% GP ($M) |
 
 ### `insight_signal` — Tín hiệu AI
 | Field | Ý nghĩa |
