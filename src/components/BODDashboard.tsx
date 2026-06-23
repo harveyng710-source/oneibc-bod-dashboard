@@ -1216,11 +1216,31 @@ export default function BODDashboard({ initialData }: Props) {
                    <div className="text-lg font-bold text-slate-500 italic">Reporting Period: {d.label} • Bi-Weekly Management Cycle</div>
                 </div>
 
+                {/* KPI tiles (Salesforce-style) */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
+                   {[
+                      { l: "Revenue", a: d.revenue, t: d.revenueTarget },
+                      { l: "Gross Profit", a: d.gp, t: d.gpTarget },
+                      { l: "EBITDA", a: d.ebitda, t: d.ebitdaTarget },
+                      { l: "Forecast", a: d.forecastBase, t: d.forecastTarget },
+                   ].map((m) => {
+                      const ach = m.t > 0 ? (m.a / m.t) * 100 : 0;
+                      return (
+                        <div key={m.l} className="border border-slate-200 rounded-xl p-4 text-center">
+                           <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">{m.l}</div>
+                           <div className="text-2xl font-black text-slate-900">${fmt1(m.a)}M</div>
+                           <div className={`text-[11px] font-black mt-1 ${ach >= 100 ? "text-emerald-600" : ach >= 90 ? "text-amber-600" : "text-red-600"}`}>{ach.toFixed(0)}% đạt target</div>
+                        </div>
+                      );
+                   })}
+                </div>
+
                 <div className="space-y-12">
                    <section>
                       <h2 className="text-xl font-black uppercase tracking-widest text-indigo-600 mb-6 border-l-4 border-indigo-600 pl-4">1. Executive Summary</h2>
+                      <p className="text-base text-slate-500 italic mb-5 font-medium">Tự tổng hợp từ dữ liệu kỳ {d.label} (AI reasoning rule-based):</p>
                       <div className="space-y-4">
-                         {d.narrative.map((n, i) => (
+                         {execBrief.map((n, i) => (
                             <p key={i} className="text-lg leading-relaxed text-slate-700 font-medium">
                                <span className="text-indigo-600 font-black mr-2">1.{i+1}</span> {n}
                             </p>
@@ -1258,8 +1278,53 @@ export default function BODDashboard({ initialData }: Props) {
                       </table>
                    </section>
 
+                   {fpa && (
                    <section>
-                      <h2 className="text-xl font-black uppercase tracking-widest text-indigo-600 mb-6 border-l-4 border-indigo-600 pl-4">3. Operational Stability & Workforce</h2>
+                      <h2 className="text-xl font-black uppercase tracking-widest text-indigo-600 mb-6 border-l-4 border-indigo-600 pl-4">3. Division Performance</h2>
+                      {(() => {
+                        const rows = fpa.teams.map((t) => {
+                          const actual = t.monthly.reduce((a, m) => a + (m.gpActual ?? 0), 0);
+                          const target = t.monthly.filter((m) => m.gpActual !== null).reduce((a, m) => a + m.gpTarget, 0);
+                          const ach = target > 0 ? (actual / target) * 100 : 0;
+                          return { team: t.team, actual, target, ach, bayes: t.bayesianForecast, conf: t.confidence };
+                        });
+                        const best = [...rows].sort((a, b) => b.ach - a.ach)[0];
+                        const worst = [...rows].sort((a, b) => a.ach - b.ach)[0];
+                        return (
+                          <>
+                            <p className="text-lg leading-relaxed text-slate-700 font-medium mb-6">
+                               <b>{best.team}</b> dẫn đầu với <b>{best.ach.toFixed(0)}%</b> GP đạt target YTD, trong khi <b>{worst.team}</b> thấp nhất ở <b>{worst.ach.toFixed(0)}%</b> — cần ưu tiên hỗ trợ. Dự báo Bayesian Q2 toàn nhóm ${fmt1(rows.reduce((a, r) => a + r.bayes, 0))}M.
+                            </p>
+                            <table className="w-full border-collapse">
+                               <thead>
+                                  <tr className="bg-slate-50">
+                                     <th className="p-3 text-left text-xs font-black uppercase tracking-widest text-slate-400">Division</th>
+                                     <th className="p-3 text-right text-xs font-black uppercase tracking-widest text-slate-400">GP Actual</th>
+                                     <th className="p-3 text-right text-xs font-black uppercase tracking-widest text-slate-400">GP Target</th>
+                                     <th className="p-3 text-right text-xs font-black uppercase tracking-widest text-slate-400">% đạt</th>
+                                     <th className="p-3 text-right text-xs font-black uppercase tracking-widest text-slate-400">Forecast Q2</th>
+                                  </tr>
+                               </thead>
+                               <tbody className="divide-y divide-slate-100">
+                                  {rows.map((r) => (
+                                     <tr key={r.team}>
+                                        <td className="p-3 font-black text-slate-800">{r.team}</td>
+                                        <td className="p-3 text-right font-bold">${fmt1(r.actual)}M</td>
+                                        <td className="p-3 text-right text-slate-400">${fmt1(r.target)}M</td>
+                                        <td className={`p-3 text-right font-black ${r.ach >= 100 ? "text-emerald-600" : r.ach >= 80 ? "text-amber-600" : "text-red-500"}`}>{r.ach.toFixed(0)}%</td>
+                                        <td className="p-3 text-right font-bold text-indigo-600">${fmt1(r.bayes)}M <span className="text-[10px] text-slate-400 font-medium">({r.conf})</span></td>
+                                     </tr>
+                                  ))}
+                               </tbody>
+                            </table>
+                          </>
+                        );
+                      })()}
+                   </section>
+                   )}
+
+                   <section>
+                      <h2 className="text-xl font-black uppercase tracking-widest text-indigo-600 mb-6 border-l-4 border-indigo-600 pl-4">4. Operational Stability & Workforce</h2>
                       <div className="grid grid-cols-2 gap-8 mb-8">
                          {d.operations?.serviceCenters.map(sc => (
                             <div key={sc.name} className="p-6 bg-slate-50 rounded-3xl">
@@ -1282,7 +1347,7 @@ export default function BODDashboard({ initialData }: Props) {
                    </section>
 
                    <section>
-                      <h2 className="text-xl font-black uppercase tracking-widest text-indigo-600 mb-6 border-l-4 border-indigo-600 pl-4">4. Risk Watchlist</h2>
+                      <h2 className="text-xl font-black uppercase tracking-widest text-indigo-600 mb-6 border-l-4 border-indigo-600 pl-4">5. Risk Watchlist</h2>
                       <div className="space-y-4">
                          {d.risks.filter(r => r.sev === "High" || r.sev === "Medium").map((r) => (
                             <div key={r.area} className="flex gap-6 p-6 border border-slate-100 rounded-3xl">
