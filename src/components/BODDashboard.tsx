@@ -12,13 +12,22 @@ import {
 } from "lucide-react";
 import dynamicImport from "next/dynamic";
 import {
-  ResponsiveContainer, AreaChart, Area, LineChart, Line, XAxis, YAxis,
+  ResponsiveContainer, Area, ComposedChart, LineChart, Line, XAxis, YAxis,
   CartesianGrid, Tooltip,
 } from "recharts";
-import type { DashboardData, PeriodData, ComparisonMode } from "@/types/dashboard";
+import type { DashboardData, PeriodData, ComparisonMode, EVMInput } from "@/types/dashboard";
 import { colorMap, statusColor, sevColor, scoreTone, fmt1, SCORECARD_META, NAV } from "@/lib/helpers";
+import { computeEVM, rollupEVM, fmtIndex } from "@/lib/evm";
 
 const AIChatPanel = dynamicImport(() => import("./AIChatPanel"), { ssr: false });
+
+// Sub-sections inside the Overview view
+const OVERVIEW_TABS = [
+  { id: "pulse",    label: "Executive Pulse" },
+  { id: "variance", label: "Variance Intelligence" },
+  { id: "driver",   label: "Revenue & Margin Driver" },
+] as const;
+type OverviewTab = (typeof OVERVIEW_TABS)[number]["id"];
 
 // ─── Micro-components ────────────────────────────────────────────────────────
 
@@ -131,6 +140,7 @@ interface Props {
 export default function BODDashboard({ initialData }: Props) {
   const [dashData, setDashData] = useState<DashboardData>(initialData);
   const [view, setView] = useState("overview");
+  const [overviewTab, setOverviewTab] = useState<OverviewTab>("pulse");
   const [periodIdx, setPeriodIdx] = useState(() => Math.max(0, dashData.periods.length - 1));
   const [comparisonMode, setComparisonMode] = useState<ComparisonMode>("budget");
   const [aiChatOpen, setAIChatOpen] = useState(false);
@@ -143,8 +153,20 @@ export default function BODDashboard({ initialData }: Props) {
   const gpTarget = comparisonMode === "budget" ? d.gpTarget : d.gpForecast;
   const ebitdaTarget = comparisonMode === "budget" ? d.ebitdaTarget : d.ebitdaForecast;
 
-  const forecastPct = Math.round((d.forecastBase / d.forecastTarget) * 100);
+  const forecastPct = d.forecastTarget > 0 ? Math.round((d.forecastBase / d.forecastTarget) * 100) : 0;
   const navLabel = NAV.find((n) => n.id === view)?.label || "AI Overview";
+
+  // ── Executive Pulse derived indicators ──────────────────────────────────────
+  const scorecardScores = Object.values(d.scorecard).map((s) => s.score);
+  const overallHealth = Math.round(scorecardScores.reduce((a, b) => a + b, 0) / scorecardScores.length);
+  const initiativesWithEvm = d.initiatives.filter((i) => i.evm);
+  const portfolio = initiativesWithEvm.length
+    ? rollupEVM(initiativesWithEvm.map((i) => i.evm as EVMInput))
+    : null;
+  const highRiskCount = d.risks.filter((r) => r.sev === "High").length;
+  const grossMargin = d.revenue > 0 ? (d.gp / d.revenue) * 100 : 0;
+  const ebitdaMargin = d.revenue > 0 ? (d.ebitda / d.revenue) * 100 : 0;
+  const wf = d.operations?.workforce;
 
   const handlePrint = useCallback(() => {
     showToast("Preparing report for PDF export...");
@@ -248,7 +270,53 @@ export default function BODDashboard({ initialData }: Props) {
         {/* ── CONTENT AREA ─────────────────────────────────────────────────── */}
         <div className="flex-1 overflow-y-auto p-8 space-y-6">
           {view === "overview" ? (
-             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+             <div className="space-y-6">
+                {/* ── Overview sub-section tabs ── */}
+                <div className="flex items-center gap-1 border-b border-slate-200">
+                  {OVERVIEW_TABS.map((t) => (
+                    <button
+                      key={t.id}
+                      onClick={() => setOverviewTab(t.id)}
+                      className={`px-5 py-3 text-[12px] font-black rounded-t-xl -mb-px border-b-2 transition-all ${
+                        overviewTab === t.id
+                          ? "border-indigo-600 text-indigo-600 bg-white"
+                          : "border-transparent text-slate-400 hover:text-slate-600"
+                      }`}
+                    >
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+
+                {overviewTab === "pulse" ? (
+                <div className="space-y-6">
+                {/* ── Company Health hero (supreme snapshot) ── */}
+                <div className="bg-[#0c1430] rounded-[28px] p-7 text-white shadow-2xl">
+                   <div className="flex flex-col lg:flex-row gap-8 items-center">
+                      <div className="flex items-center gap-6 shrink-0">
+                         <Gauge score={overallHealth} size="h-28" scoreSize="text-4xl" />
+                         <div>
+                            <div className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-400 mb-1">Company Health Index</div>
+                            <div className="text-2xl font-black">{overallHealth >= 80 ? "Strong" : overallHealth >= 60 ? "Stable" : "At Risk"}</div>
+                            <div className="text-[11px] text-slate-400 font-medium mt-1">{d.label} • Composite Balanced Scorecard</div>
+                         </div>
+                      </div>
+                      <div className="flex-1 grid grid-cols-2 md:grid-cols-4 gap-4 w-full">
+                         {[
+                            { label: "Financial Pillar", value: `${d.scorecard.financial.score}`, tone: scoreTone(d.scorecard.financial.score) },
+                            { label: "Portfolio SPI", value: portfolio ? fmtIndex(portfolio.spi) : "—", tone: portfolio ? (portfolio.spi >= 1 ? "emerald" : "amber") : "slate" },
+                            { label: "Portfolio CPI", value: portfolio ? fmtIndex(portfolio.cpi) : "—", tone: portfolio ? (portfolio.cpi >= 1 ? "emerald" : "red") : "slate" },
+                            { label: "High Risks", value: `${highRiskCount}`, tone: highRiskCount > 0 ? "red" : "emerald" },
+                         ].map((k) => (
+                            <div key={k.label} className="bg-white/5 rounded-2xl p-4 border border-white/5">
+                               <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2">{k.label}</div>
+                               <div className="text-2xl font-black" style={{ color: colorMap[k.tone].bar }}>{k.value}</div>
+                            </div>
+                         ))}
+                      </div>
+                   </div>
+                </div>
+
                 {/* KPI Row */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                   <KpiCard icon={Wallet} label={`Revenue (${currentTargetLabel})`} value={d.revenue} target={revenueTarget} spark={d.revenueSpark} color="#6366f1" />
@@ -293,68 +361,81 @@ export default function BODDashboard({ initialData }: Props) {
                   </Card>
                 </div>
 
-                {/* Variance + Drivers */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                   <Card className="lg:col-span-2 flex flex-col h-[400px]">
-                      <CardHeader title="Variance Intelligence" sub="Real-time Revenue vs Budget/Forecast Deviation" />
-                      <div className="flex-1">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <AreaChart data={d.chart}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                            <XAxis dataKey="q" axisLine={false} tickLine={false} tick={{fontSize: 10, fontStyle: 'bold', fill: '#94a3b8'}} />
-                            <YAxis axisLine={false} tickLine={false} tick={{fontSize: 10, fontStyle: 'bold', fill: '#94a3b8'}} />
-                            <Tooltip contentStyle={{borderRadius: '20px', border: 'none'}} />
-                            <Area type="monotone" dataKey="actual" stroke="#6366f1" strokeWidth={5} fillOpacity={1} fill="url(#colorPulse)" />
-                            <defs>
-                              <linearGradient id="colorPulse" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#6366f1" stopOpacity={0.25}/>
-                                <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
-                              </linearGradient>
-                            </defs>
-                          </AreaChart>
-                        </ResponsiveContainer>
-                      </div>
-                   </Card>
-                   
-                   <Card className="flex flex-col h-[400px]">
-                      <CardHeader title="Revenue Drivers" sub="Performance by Sales Pricebook" />
-                      <div className="space-y-6 overflow-y-auto pr-2 custom-scrollbar">
-                        {d.departments.map(dep => (
-                          <div key={dep.name}>
-                            <div className="flex justify-between items-center mb-2">
-                              <span className="text-[11px] font-black text-slate-700">{dep.name}</span>
-                              <span className="text-[11px] font-black text-indigo-600">${dep.value}M</span>
-                            </div>
-                            <ProgressBar value={dep.pct} tone="emerald" thick />
+                {/* Strategic Portfolio Execution (EVM) */}
+                <Card>
+                  <CardHeader
+                    title="Strategic Portfolio Execution (EVM)"
+                    sub="Earned Value across strategic initiatives"
+                    right={portfolio ? <Badge label={portfolio.health === "ahead" ? "Ahead" : portfolio.health === "behind" ? "Behind" : "On Track"} tone={portfolio.health === "ahead" ? "emerald" : portfolio.health === "behind" ? "red" : "amber"} /> : undefined}
+                  />
+                  {portfolio ? (
+                    <>
+                      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+                        {[
+                          { l: "SPI", v: fmtIndex(portfolio.spi) },
+                          { l: "CPI", v: fmtIndex(portfolio.cpi) },
+                          { l: "EAC", v: `$${fmt1(portfolio.eac)}M` },
+                          { l: "VAC", v: `$${fmt1(portfolio.vac)}M` },
+                          { l: "Complete", v: `${Math.round(portfolio.percentComplete)}%` },
+                        ].map((m) => (
+                          <div key={m.l} className="bg-slate-50 rounded-2xl p-4 text-center">
+                            <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5">{m.l}</div>
+                            <div className="text-lg font-black text-slate-800">{m.v}</div>
                           </div>
                         ))}
                       </div>
-                      <div className="mt-auto p-5 bg-indigo-50/50 rounded-3xl border border-indigo-100 italic text-[10px] text-indigo-600 font-bold">
-                         *Salesforce Pricebook Integration • Automated Refresh
+                      <div className="space-y-2">
+                        {initiativesWithEvm.map((it) => {
+                          const e = computeEVM(it.evm as EVMInput);
+                          return (
+                            <div key={it.name} className="flex items-center gap-4 p-3 rounded-2xl hover:bg-slate-50 transition-colors">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex justify-between items-center mb-1.5 gap-2">
+                                  <span className="text-[12px] font-black text-slate-700 truncate">{it.name}</span>
+                                  <span className="text-[11px] font-bold text-slate-400 shrink-0">{it.progress}%</span>
+                                </div>
+                                <ProgressBar value={it.progress} tone={statusColor(it.status)} thick />
+                              </div>
+                              <div className="flex gap-2 shrink-0">
+                                <span className={`text-[10px] font-black px-2.5 py-1 rounded-lg ${e.spi >= 1 ? "bg-emerald-50 text-emerald-600" : "bg-amber-50 text-amber-600"}`}>SPI {fmtIndex(e.spi)}</span>
+                                <span className={`text-[10px] font-black px-2.5 py-1 rounded-lg ${e.cpi >= 1 ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600"}`}>CPI {fmtIndex(e.cpi)}</span>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
-                   </Card>
-                </div>
+                    </>
+                  ) : (
+                    <div className="text-center text-[11px] text-slate-400 py-8 font-medium">EVM data not available for this period.</div>
+                  )}
+                </Card>
 
-                {/* Initiatives + Stories */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Workforce snapshot + Stories */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   <Card>
-                    <CardHeader title="Strategic Initiatives" sub="Global Council Execution" />
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-6 mt-2">
-                      {d.initiatives.slice(0, 4).map((it) => (
-                        <div key={it.name}>
-                          <div className="flex items-center justify-between mb-2.5 gap-2">
-                            <span className="text-[11px] font-black text-slate-700 truncate">{it.name}</span>
-                            <span className="text-[11px] font-black text-slate-400">{it.progress}%</span>
+                    <CardHeader title="Workforce Snapshot" sub="Company-wide capacity" />
+                    {wf ? (
+                      <div className="grid grid-cols-2 gap-4">
+                        {[
+                          { l: "Headcount", v: `${wf.headcount}` },
+                          { l: "Utilization", v: `${wf.utilization}%` },
+                          { l: "Attrition", v: `${wf.attrition}%` },
+                          { l: "Cost/Head", v: `$${wf.costPerHead}K` },
+                        ].map((m) => (
+                          <div key={m.l} className="bg-slate-50 rounded-2xl p-4">
+                            <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1.5">{m.l}</div>
+                            <div className="text-xl font-black text-slate-800">{m.v}</div>
                           </div>
-                          <ProgressBar value={it.progress} tone={statusColor(it.status)} thick />
-                        </div>
-                      ))}
-                    </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center text-[11px] text-slate-400 py-8 font-medium">No workforce data for this period.</div>
+                    )}
                   </Card>
 
-                  <Card>
+                  <Card className="lg:col-span-2">
                     <CardHeader title="Management Stories" sub="Latest Council Thread Updates" />
-                    <div className="space-y-6">
+                    <div className="space-y-5">
                       {dashData.stories.slice(0, 3).map((s) => (
                         <div key={s.title} className="border-l-4 pl-5 py-1" style={{ borderColor: colorMap[s.sentiment === "Positive" ? "emerald" : s.sentiment === "Watch" ? "amber" : "red"].bar }}>
                           <div className="flex items-center justify-between gap-2">
@@ -370,7 +451,7 @@ export default function BODDashboard({ initialData }: Props) {
 
                 {/* AI Bottom Panel */}
                 <div className="bg-[#0c1430] rounded-[32px] p-8 text-white shadow-2xl relative overflow-hidden group">
-                   <div className="absolute top-0 right-0 p-12 opacity-5 scale-150 rotate-12 transition-transform group-hover:scale-175">
+                   <div className="absolute top-0 right-0 p-12 opacity-5 scale-150 rotate-12">
                       <Sparkles size={160} />
                    </div>
                    <div className="relative flex flex-col md:flex-row items-center gap-8">
@@ -393,6 +474,148 @@ export default function BODDashboard({ initialData }: Props) {
                       </button>
                    </div>
                 </div>
+                </div>
+                ) : overviewTab === "variance" ? (
+                <div className="space-y-6">
+                   <Card className="flex flex-col h-[440px]">
+                      <CardHeader title="Variance Intelligence" sub={`Real-time Revenue vs ${currentTargetLabel} Deviation`} />
+                      <div className="flex-1">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <ComposedChart data={d.chart}>
+                            <defs>
+                              <linearGradient id="colorPulse" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#6366f1" stopOpacity={0.25}/>
+                                <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                            <XAxis dataKey="q" axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 700, fill: '#94a3b8'}} />
+                            <YAxis axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 700, fill: '#94a3b8'}} />
+                            <Tooltip contentStyle={{borderRadius: '20px', border: 'none'}} />
+                            <Area type="monotone" name="Actual" dataKey="actual" stroke="#6366f1" strokeWidth={4} fillOpacity={1} fill="url(#colorPulse)" />
+                            <Line type="monotone" name="Base" dataKey="base" stroke="#94a3b8" strokeWidth={2} strokeDasharray="4 4" dot={false} />
+                            <Line type="monotone" name="Target" dataKey="target" stroke="#0ea5e9" strokeWidth={2} dot={false} />
+                          </ComposedChart>
+                        </ResponsiveContainer>
+                      </div>
+                   </Card>
+
+                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                     {[
+                        { label: "Revenue", actual: d.revenue, target: revenueTarget },
+                        { label: "Gross Profit", actual: d.gp, target: gpTarget },
+                        { label: "EBITDA", actual: d.ebitda, target: ebitdaTarget },
+                     ].map((m) => {
+                        const v = m.actual - m.target;
+                        const vp = m.target > 0 ? (v / m.target) * 100 : 0;
+                        return (
+                          <Card key={m.label}>
+                            <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">{m.label} vs {currentTargetLabel}</div>
+                            <div className="flex items-end justify-between gap-2">
+                              <div className="text-2xl font-black text-slate-800">${fmt1(m.actual)}M</div>
+                              <div className={`text-sm font-black ${v >= 0 ? "text-emerald-500" : "text-red-500"}`}>{v >= 0 ? "+" : ""}{fmt1(v)}M ({vp >= 0 ? "+" : ""}{vp.toFixed(1)}%)</div>
+                            </div>
+                            <div className="text-[10px] text-slate-400 mt-1 font-medium">{currentTargetLabel} ${fmt1(m.target)}M</div>
+                          </Card>
+                        );
+                     })}
+                   </div>
+
+                   <Card>
+                      <CardHeader title="Quarterly Variance Breakdown" sub="Actual vs Base vs Target ($M)" />
+                      <table className="w-full text-[12px]">
+                        <thead>
+                          <tr className="text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-100">
+                            <th className="text-left py-3">Quarter</th>
+                            <th className="text-right">Actual</th>
+                            <th className="text-right">Base</th>
+                            <th className="text-right">Target</th>
+                            <th className="text-right">Variance vs Base</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-50">
+                          {d.chart.map((c) => {
+                            const has = c.actual !== null;
+                            const v = has ? (c.actual as number) - c.base : null;
+                            const vp = v !== null && c.base > 0 ? (v / c.base) * 100 : null;
+                            return (
+                              <tr key={c.q} className="hover:bg-slate-50/50">
+                                <td className="py-3 font-black text-slate-700">{c.q}</td>
+                                <td className="text-right font-bold">{has ? `$${fmt1(c.actual as number)}M` : "—"}</td>
+                                <td className="text-right text-slate-400">${fmt1(c.base)}M</td>
+                                <td className="text-right text-slate-400">${fmt1(c.target)}M</td>
+                                <td className={`text-right font-black ${v === null ? "text-slate-300" : v >= 0 ? "text-emerald-500" : "text-red-500"}`}>
+                                  {v === null ? "—" : `${v >= 0 ? "+" : ""}${fmt1(v)}M${vp !== null ? ` (${vp >= 0 ? "+" : ""}${vp.toFixed(0)}%)` : ""}`}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                   </Card>
+                </div>
+                ) : (
+                <div className="space-y-6">
+                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                     {[
+                        { l: "Total Revenue", v: `$${fmt1(d.revenue)}M`, s: `vs ${currentTargetLabel} $${fmt1(revenueTarget)}M` },
+                        { l: "Gross Margin", v: `${grossMargin.toFixed(1)}%`, s: `GP $${fmt1(d.gp)}M` },
+                        { l: "EBITDA Margin", v: `${ebitdaMargin.toFixed(1)}%`, s: `EBITDA $${fmt1(d.ebitda)}M` },
+                     ].map((m) => (
+                        <Card key={m.l}>
+                          <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">{m.l}</div>
+                          <div className="text-2xl font-black text-slate-800">{m.v}</div>
+                          <div className="text-[10px] text-slate-400 mt-1 font-medium">{m.s}</div>
+                        </Card>
+                     ))}
+                   </div>
+
+                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      <Card className="flex flex-col">
+                         <CardHeader title="Revenue & Margin Drivers" sub="Performance by Sales Pricebook" />
+                         <div className="space-y-6">
+                           {d.departments.map((dep) => (
+                             <div key={dep.name}>
+                               <div className="flex justify-between items-center mb-2">
+                                 <span className="text-[12px] font-black text-slate-700">{dep.name}</span>
+                                 <span className="text-[12px] font-black text-indigo-600">${fmt1(dep.value)}M · {dep.pct}%</span>
+                               </div>
+                               <ProgressBar value={dep.pct} tone="emerald" thick />
+                             </div>
+                           ))}
+                         </div>
+                         <div className="mt-6 p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100 italic text-[10px] text-indigo-600 font-bold">
+                            *Salesforce Pricebook Integration • Automated Refresh
+                         </div>
+                      </Card>
+
+                      <Card className="flex flex-col">
+                         <CardHeader title="Team Productivity" sub="Revenue contribution vs people cost" />
+                         {wf?.teams?.length ? (
+                           <div className="space-y-3">
+                             {wf.teams.map((t) => {
+                               const ratio = t.totalCost > 0 ? t.revenueContribution / t.totalCost : 0;
+                               return (
+                                 <div key={t.team} className="flex items-center justify-between p-3 rounded-2xl hover:bg-slate-50 transition-colors">
+                                   <div className="min-w-0">
+                                     <div className="text-[12px] font-black text-slate-700">{t.team}</div>
+                                     <div className="text-[10px] text-slate-400 font-medium">{t.headcount} ppl · ${fmt1(t.totalCost)}M cost</div>
+                                   </div>
+                                   <div className="text-right shrink-0">
+                                     <div className="text-[13px] font-black text-slate-800">${fmt1(t.revenueContribution)}M</div>
+                                     <div className={`text-[10px] font-bold ${ratio >= 2 ? "text-emerald-500" : ratio > 0 ? "text-amber-500" : "text-slate-400"}`}>{ratio > 0 ? `${ratio.toFixed(1)}× ROI` : "support"}</div>
+                                   </div>
+                                 </div>
+                               );
+                             })}
+                           </div>
+                         ) : (
+                           <div className="text-center text-[11px] text-slate-400 py-8 font-medium">No team data for this period.</div>
+                         )}
+                      </Card>
+                   </div>
+                </div>
+                )}
              </div>
           ) : view === "operations" ? (
              <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
