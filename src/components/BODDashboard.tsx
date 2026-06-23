@@ -256,6 +256,17 @@ export default function BODDashboard({ initialData }: Props) {
   const workloadRecs = teams.map((t) => recommendWorkload(t));
   const fpa = dashData.fpa;
   const fpaMonths = fpa?.teams[0]?.monthly.map((m) => m.month) ?? [];
+  // Latest closed month (max index with a GP actual across teams) for the dept pipeline combo.
+  const fpaLastIdx = fpa ? Math.max(-1, ...fpa.teams.flatMap((t) => t.monthly.map((m, i) => (m.gpActual !== null ? i : -1)))) : -1;
+  const fpaMonthLabel = fpaLastIdx >= 0 ? fpaMonths[fpaLastIdx] : "";
+  const deptPipeline = fpa && fpaLastIdx >= 0
+    ? fpa.teams.map((t) => {
+        const m = t.monthly[fpaLastIdx];
+        const actual = m?.gpActual ?? 0;
+        const target = m?.gpTarget ?? 0;
+        return { name: t.team, Actual: actual, Target: target, achieve: target > 0 ? Math.round((actual / target) * 100) : 0 };
+      })
+    : [];
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
@@ -472,6 +483,28 @@ export default function BODDashboard({ initialData }: Props) {
                     </div>
                   </Card>
                 </div>
+
+                {/* Department Pipeline Performance — combo chart */}
+                {deptPipeline.length > 0 && (
+                <Card>
+                  <CardHeader title={`Department Pipeline Performance — ${fpaMonthLabel}`} sub="GP Actual vs Target theo department + % đạt (tháng gần nhất có số liệu)" />
+                  <div className="h-[340px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <ComposedChart data={deptPipeline} margin={{ top: 8, right: 8, left: 0, bottom: 4 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 700, fill: "#475569" }} />
+                        <YAxis yAxisId="left" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: "#94a3b8" }} tickFormatter={(v) => `$${v}M`} />
+                        <YAxis yAxisId="right" orientation="right" domain={[0, 150]} axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: "#0ea5e9" }} tickFormatter={(v) => `${v}%`} />
+                        <Tooltip contentStyle={{ borderRadius: "16px", border: "none", fontSize: 12 }} />
+                        <Legend wrapperStyle={{ fontSize: 11, fontWeight: 700 }} />
+                        <Bar yAxisId="left" name="Target GP" dataKey="Target" fill="#cbd5e1" radius={[6, 6, 0, 0]} barSize={22} />
+                        <Bar yAxisId="left" name="Actual GP" dataKey="Actual" fill="#6366f1" radius={[6, 6, 0, 0]} barSize={22} />
+                        <Line yAxisId="right" name="% đạt" type="monotone" dataKey="achieve" stroke="#0ea5e9" strokeWidth={3} dot={{ r: 4 }} />
+                      </ComposedChart>
+                    </ResponsiveContainer>
+                  </div>
+                </Card>
+                )}
 
                 {/* Strategic Portfolio Execution (EVM) */}
                 <Card>
