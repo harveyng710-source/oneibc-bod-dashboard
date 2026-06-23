@@ -48,7 +48,7 @@ function trendVal(v: string | undefined): "up" | "down" | "flat" {
 
 // ── types for raw CSV rows ────────────────────────────────────────────────────
 
-interface RawRow {
+export interface RawRow {
   section?: string;
   period?: string;
   metric?: string;
@@ -121,6 +121,15 @@ export function parseCsvString(csvText: string): DashboardData {
 }
 
 // ── row aggregator ────────────────────────────────────────────────────────────
+
+/**
+ * Build DashboardData from already-parsed rows. Exposed so multi-tab loaders
+ * (one tab per `section`) can assemble rows from several sheets and reuse the
+ * exact same aggregation logic as the flat single-sheet CSV path.
+ */
+export function parseRows(rows: RawRow[]): DashboardData {
+  return buildFromRows(rows);
+}
 
 function buildFromRows(rows: RawRow[]): DashboardData {
   // We start from the static scaffold and only overwrite what the CSV provides.
