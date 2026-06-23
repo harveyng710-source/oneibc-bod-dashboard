@@ -13,9 +13,21 @@
 import { STATIC_DASHBOARD_DATA } from "./staticData";
 import { parseCsvUrl } from "./csvParser";
 import { fetchGoogleSheetData } from "./googleSheets";
+import { getSettings, applyWeightOverrides } from "./settingsStore";
 import type { DashboardData } from "@/types/dashboard";
 
 export async function loadDashboardData(): Promise<DashboardData> {
+  const data = await resolveSource();
+  // Apply persisted scorecard weight overrides (no-op without a DB).
+  try {
+    const settings = await getSettings();
+    return applyWeightOverrides(data, settings.scorecardWeights);
+  } catch {
+    return data;
+  }
+}
+
+async function resolveSource(): Promise<DashboardData> {
   // ── 1. Google Sheets ───────────────────────────────────────────────────────
   const sheetId = process.env.GOOGLE_SHEET_ID;
   if (sheetId) {

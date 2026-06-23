@@ -8,9 +8,10 @@
 import { useState, useCallback } from "react";
 import {
   Activity, Wallet, TrendingUp, Target,
-  FileText, ArrowUp, ArrowDown, Minus, Building2, Sparkles, Bot, Download, Info, MessageSquarePlus,
+  FileText, ArrowUp, ArrowDown, Minus, Building2, Sparkles, Bot, Download, Info, MessageSquarePlus, Settings,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import Link from "next/link";
 import dynamicImport from "next/dynamic";
 import {
   ResponsiveContainer, Area, ComposedChart, LineChart, Line, XAxis, YAxis,
@@ -258,6 +259,13 @@ export default function BODDashboard({ initialData }: Props) {
                </button>
              );
           })}
+          <Link
+            href="/settings"
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-[13px] font-bold text-slate-400 hover:bg-white/5 hover:text-indigo-200 transition-all"
+          >
+            <Settings size={15} className="shrink-0" />
+            <span className="truncate">Settings</span>
+          </Link>
         </nav>
 
         <div className="p-4 bg-white/5 m-4 rounded-2xl border border-white/5 no-print">

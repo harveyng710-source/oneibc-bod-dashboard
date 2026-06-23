@@ -49,6 +49,7 @@ export default function AIChatPanel({ currentData, isOpen, onClose }: AIChatPane
     setMessages((prev) => [...prev, userMsg]);
     setInput("");
     setIsTyping(true);
+    void persistChat("user", input, currentData.label);
 
     // Simulate AI reasoning over dashboard data
     setTimeout(() => {
@@ -56,6 +57,7 @@ export default function AIChatPanel({ currentData, isOpen, onClose }: AIChatPane
       const aiMsg: Message = { role: "assistant", content: response, timestamp: new Date() };
       setMessages((prev) => [...prev, aiMsg]);
       setIsTyping(false);
+      void persistChat("assistant", response, currentData.label);
     }, 1200);
   };
 
@@ -141,6 +143,19 @@ export default function AIChatPanel({ currentData, isOpen, onClose }: AIChatPane
       </div>
     </div>
   );
+}
+
+/** Best-effort persist of a chat message (no-op server-side without a DB). */
+async function persistChat(role: string, content: string, period?: string) {
+  try {
+    await fetch("/api/settings/chat-history", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ role, content, period }),
+    });
+  } catch {
+    /* ignore — chat still works offline */
+  }
 }
 
 // ── Mock AI Reasoning Logic ──────────────────────────────────────────────────
