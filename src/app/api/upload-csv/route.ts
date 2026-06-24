@@ -9,6 +9,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { parseCsvString } from "@/lib/csvParser";
 
+/** Reject oversized uploads early — the parser is CPU-bound, so cap input size. */
+const MAX_BYTES = 2_000_000; // 2 MB is plenty for a flat dashboard CSV.
+
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
@@ -28,7 +31,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (file.size > MAX_BYTES) {
+      return NextResponse.json(
+        { error: `File too large (max ${MAX_BYTES / 1_000_000} MB).` },
+        { status: 413 }
+      );
+    }
+
     const csvText = await file.text();
+    // Guard against a small file that decompresses / decodes to something huge.
+    if (csvText.length > MAX_BYTES * 4) {
+      return NextResponse.json({ error: "File content too large." }, { status: 413 });
+    }
+
     const data = parseCsvString(csvText);
 
     return NextResponse.json(data);

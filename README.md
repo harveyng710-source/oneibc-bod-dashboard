@@ -2,61 +2,62 @@
 
 Hệ thống dashboard quản trị dành cho Ban Giám đốc (BOD), hỗ trợ tổng hợp và biểu diễn dữ liệu chiến lược, tài chính và vận hành.
 
+> 📄 Đặc tả đầy đủ: [`docs/PRD.md`](docs/PRD.md) · Mẫu nhập liệu: [`docs/google-sheet-template.md`](docs/google-sheet-template.md) · Bàn giao/vận hành: [`docs/HANDOVER.md`](docs/HANDOVER.md)
+
 ## 🚀 Tính năng chính
-- **8 View chuyên sâu**: Overview, Strategic Health, Enterprise Risk, Financials, Forecast, Initiatives, Management Stories, Reports Library.
-- **Nguồn dữ liệu linh hoạt**: Hỗ trợ Google Sheets (thời gian thực), file CSV, hoặc kéo thả trực tiếp file vào giao diện.
-- **Tự động tính toán**: Tự động tính Scorecard theo trọng số, tính Delta vs Target, và xu hướng.
+- **6 view điều hành**: Overview (Pulse / Variance / Driver), Operations (Centers & Workforce), Capital (P&L · Cash Flow · Payables), Insight Signals, Executive Briefing, Reports Library.
+- **Nguồn dữ liệu linh hoạt**: Google Sheets (gần thời gian thực), file CSV, hoặc kéo–thả file `.csv` trực tiếp vào giao diện.
+- **Tự động tính toán nhất quán**: Scorecard theo trọng số, EVM (SPI/CPI/EAC/VAC…), dự báo FP&A kép (Bayesian × pipeline), tổng hợp nhân sự — đều tính tại runtime từ dữ liệu thô.
+- **Chạy được không cần database**: thiếu cấu hình ⇒ phục vụ dữ liệu seed tĩnh.
 
-## 🛠 Hướng dẫn cấu hình dữ liệu
+## 🛠 Cấu hình nguồn dữ liệu
 
-### Cách 1: Sử dụng Google Sheets (Khuyên dùng)
-1. **Chuẩn bị Sheet**: Tạo một Google Sheet với cấu trúc các cột sau:
-   `section, period, metric, value, target, pct, trend, severity, owner, label, status, progress, sentiment, summary, thread, time, updated, framework, desc, q, actual, base, weight, spark, pillar, name, council, accountable`
-2. **Cấp quyền**: Chia sẻ Sheet ở chế độ "Anyone with the link can view".
-3. **Lấy ID**: Copy ID của Sheet từ URL (đoạn mã nằm giữa `/d/` và `/edit`).
-4. **Cấu hình**: Thêm vào file `.env.local`:
+### Cách 1 — Google Sheets (khuyên dùng)
+1. **Mẫu**: import [`public/templates/OneIBC_BOD_Workbook.xlsx`](public/templates/OneIBC_BOD_Workbook.xlsx) vào Google Sheets (workbook **6 tab chủ đề**; mỗi dòng có cột `section` dạng dropdown + dòng hướng dẫn). Xem [`docs/google-sheet-template.md`](docs/google-sheet-template.md).
+2. **Cấp quyền**: share "Anyone with the link → Viewer" (hoặc dùng service account cho sheet riêng tư).
+3. **Lấy ID**: phần giữa `/d/` và `/edit` trong URL.
+4. **Cấu hình** (`.env.local` hoặc Railway → Variables):
    ```env
    GOOGLE_SHEET_ID=your_id_here
+   # tùy chọn cho sheet riêng tư:
+   # GOOGLE_SERVICE_ACCOUNT_KEY={...json một dòng...}
    ```
 
-### Cách 2: Sử dụng CSV
-- Bạn có thể kéo thả file `.csv` trực tiếp vào dashboard để cập nhật dữ liệu tạm thời.
-- Để lưu cố định, cấu hình URL CSV trong `.env.local`:
-  ```env
-  DASHBOARD_CSV_URL=https://your-domain.com/data.csv
-  ```
+> Workbook cũng nhận layout **1-tab-1-section** và **CSV phẳng** (một sheet, mỗi dòng có cột `section` + `period`) để tương thích ngược.
 
-## 📊 Cấu trúc Header CSV/Sheet
-Dữ liệu được tổ chức theo từng "Section". Dưới đây là các giá trị hợp lệ cho cột `section`:
-- `kpi`: Các chỉ số tài chính chính (revenue, gp, ebitda, forecast_base, forecast_target).
-- `scorecard`: Các chỉ số thành phần của 4 trụ cột (financial, customer, operational, technology).
-- `risk`: Danh sách rủi ro doanh nghiệp.
-- `initiative`: Tiến độ các sáng kiến chiến lược.
-- `department`: Phân rã GP theo phòng ban.
-- `narrative`: Các ghi chú từ Ban điều hành.
-- `story`: Các câu chuyện quản trị/cập nhật quan trọng.
-- `report`: Danh mục báo cáo.
+### Cách 2 — CSV
+- Kéo–thả `.csv` trực tiếp vào dashboard để xem nhanh (không lưu).
+- Lưu cố định: `DASHBOARD_CSV_URL=https://your-domain.com/data.csv`.
 
-## 💻 Hướng dẫn chạy dự án
+## 📊 Các `section` hợp lệ
+`kpi`, `revenue_targets`, `scorecard`, `chart`, `department`, `narrative`, `risk`, `initiative`,
+`operations_center`, `supply_partner`, `team_workforce`, `capital_pl`, `capital_cf`, `payable`,
+`insight_signal`, `story`, `report`, `fpa_monthly`, `fpa_forecast`, `fpa_scenario`, `fpa_ci`.
+Chi tiết cột theo từng section: xem [`docs/PRD.md`](docs/PRD.md) §6 và file mẫu.
 
-### Cài đặt
+## 💻 Phát triển
+
 ```bash
-npm install
+npm install      # cài dependencies
+npm run dev      # chạy local (http://localhost:3000)
+npm test         # unit test (vitest)
+npm run lint     # eslint
+npx tsc --noEmit # type-check
+npm run build    # build production
+npm run start    # chạy bản build
 ```
 
-### Chạy Local (Development)
-```bash
-npm run dev
-```
+CI (GitHub Actions, `.github/workflows/ci.yml`) chạy lint + type-check + test + build trên mỗi push/PR.
 
-### Build Production
-```bash
-npm run build
-npm run start
-```
+## 🔐 Settings console & biến môi trường
+- `/settings` được bảo vệ bằng `SETTINGS_PASSWORD` (đặt thêm `SETTINGS_SECRET` ngẫu nhiên ở production).
+- Postgres (`DATABASE_URL`) là **tùy chọn**: lưu override trọng số/HRMS, access log, lịch sử chat. Thiếu ⇒ chạy với mặc định, thay đổi không được lưu.
+- Danh sách đầy đủ: [`.env.example`](.env.example).
 
 ## 📂 Cấu trúc thư mục
-- `src/app`: Routes và API (Next.js App Router).
-- `src/components`: UI Components chính.
-- `src/lib`: Logic xử lý dữ liệu (Parsers, Loaders, Helpers).
-- `src/types`: TypeScript definitions.
+- `src/app` — routes & API (Next.js App Router).
+- `src/components` — UI (`BODDashboard`, `AIChatPanel`).
+- `src/lib` — logic: parser, loaders, EVM, forecast, workload, reasoning, settings, db.
+- `src/types` — TypeScript definitions (`DashboardData`).
+- `tests` — unit tests (vitest).
+- `docs` — PRD, mẫu Google Sheet, tài liệu bàn giao.

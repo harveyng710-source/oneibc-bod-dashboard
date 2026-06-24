@@ -16,6 +16,7 @@ import { loadDashboardData } from "@/lib/dataLoader";
 import { parseCsvUrl } from "@/lib/csvParser";
 import { fetchGoogleSheetData } from "@/lib/googleSheets";
 import { STATIC_DASHBOARD_DATA } from "@/lib/staticData";
+import { isAuthed } from "@/lib/settingsAuth";
 
 export const dynamic = "force-dynamic"; // always fresh
 
@@ -24,6 +25,17 @@ export async function GET(request: NextRequest) {
     const { searchParams } = request.nextUrl;
     const source = searchParams.get("source");
     const csvUrl = searchParams.get("url");
+
+    // The `source`/`url` overrides let a caller make the server fetch an
+    // arbitrary URL (SSRF) or force a specific backend. They are debugging /
+    // admin tools, so gate them behind the Settings session. The default,
+    // unauthenticated path uses only the env-configured source.
+    if (source && !(await isAuthed())) {
+      return NextResponse.json(
+        { error: "The ?source override requires an authenticated Settings session." },
+        { status: 401 }
+      );
+    }
 
     let data;
 
