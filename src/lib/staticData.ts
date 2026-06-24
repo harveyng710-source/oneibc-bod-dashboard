@@ -251,14 +251,17 @@ export const STATIC_DASHBOARD_DATA: DashboardData = {
           { name: "Local Agent BVI", category: "Agent", spend: 0.3, performance: 85 },
         ],
         workforce: {
-          headcount: 210, utilization: 84, attrition: 13, costPerHead: 81,
+          // headcount + revenueContribution are REAL (HR tracking 2026-01-02;
+          // revenue = recorded GP-workbook revenue M1–M5). utilization /
+          // attrition / costPerHead / evm remain estimates (no source data yet).
+          headcount: 59, utilization: 84, attrition: 12, costPerHead: 82,
           teams: [
-            { team: "RM + Bank",  type: "revenue", headcount: 45, utilization: 82, attrition: 12, costPerHead: 95, totalCost: 4.3, revenueContribution: 16.5, evm: { bac: 5.0, pv: 2.5, ev: 2.6,  ac: 2.4  } },
-            { team: "S&F",        type: "revenue", headcount: 60, utilization: 88, attrition: 15, costPerHead: 80, totalCost: 4.8, revenueContribution: 12.4, evm: { bac: 5.5, pv: 2.8, ev: 2.6,  ac: 2.9  } },
-            { team: "Renew",      type: "revenue", headcount: 35, utilization: 79, attrition: 10, costPerHead: 78, totalCost: 2.7, revenueContribution: 11.5, evm: { bac: 3.0, pv: 1.5, ev: 1.55, ac: 1.45 } },
-            { team: "ATA",        type: "revenue", headcount: 25, utilization: 84, attrition: 18, costPerHead: 70, totalCost: 1.8, revenueContribution: 5.5,  evm: { bac: 2.2, pv: 1.1, ev: 1.0,  ac: 1.2  } },
-            { team: "Marketing",  type: "support", headcount: 18, utilization: 75, attrition: 9,  costPerHead: 85, totalCost: 1.5, revenueContribution: 0,    evm: { bac: 1.8, pv: 0.9, ev: 0.95, ac: 0.88 } },
-            { team: "Ops",        type: "support", headcount: 27, utilization: 90, attrition: 11, costPerHead: 72, totalCost: 1.9, revenueContribution: 0,    evm: { bac: 2.4, pv: 1.2, ev: 1.18, ac: 1.25 } },
+            { team: "RM + Bank",  type: "revenue", headcount: 19, utilization: 82, attrition: 12, costPerHead: 95, totalCost: 1.81, revenueContribution: 0.3338, evm: { bac: 5.0, pv: 2.5, ev: 2.6,  ac: 2.4  } },
+            { team: "S&F",        type: "revenue", headcount: 6,  utilization: 88, attrition: 15, costPerHead: 80, totalCost: 0.48, revenueContribution: 0.2696, evm: { bac: 5.5, pv: 2.8, ev: 2.6,  ac: 2.9  } },
+            { team: "Renew",      type: "revenue", headcount: 4,  utilization: 79, attrition: 10, costPerHead: 78, totalCost: 0.31, revenueContribution: 1.0493, evm: { bac: 3.0, pv: 1.5, ev: 1.55, ac: 1.45 } },
+            { team: "ATA",        type: "revenue", headcount: 9,  utilization: 84, attrition: 18, costPerHead: 70, totalCost: 0.63, revenueContribution: 0.4542, evm: { bac: 2.2, pv: 1.1, ev: 1.0,  ac: 1.2  } },
+            { team: "Marketing",  type: "support", headcount: 8,  utilization: 75, attrition: 9,  costPerHead: 85, totalCost: 0.68, revenueContribution: 0,      evm: { bac: 1.8, pv: 0.9, ev: 0.95, ac: 0.88 } },
+            { team: "Ops",        type: "support", headcount: 13, utilization: 90, attrition: 11, costPerHead: 72, totalCost: 0.94, revenueContribution: 0,      evm: { bac: 2.4, pv: 1.2, ev: 1.18, ac: 1.25 } },
           ],
         },
       },
@@ -366,7 +369,7 @@ export const STATIC_DASHBOARD_DATA: DashboardData = {
         team: "RM + Bank", type: "revenue", q2Target: 0.2262, posteriorRate: 0.53005,
         bayesianForecast: 0.1199, pipelineForecast: 0.1280, confidence: "High",
         monthly: [
-          { month: "M1", gpTarget: 0.0912, gpActual: 0.0343, revenue: 0.0506 },
+          { month: "M1", gpTarget: 0.0992, gpActual: 0.0358, revenue: 0.0525 },
           { month: "M2", gpTarget: 0.0992, gpActual: 0.0564, revenue: 0.0846 },
           { month: "M3", gpTarget: 0.0992, gpActual: 0.0560, revenue: 0.0833 },
           { month: "M4", gpTarget: 0.0754, gpActual: 0.0362, revenue: 0.0596 },
