@@ -34,10 +34,10 @@ export const METRIC_DOCS: Record<string, MetricDoc> = {
     dataFlow: "Salesforce + Accounting → Sheet (section=kpi, metric=gp) → parser → dashboard.",
   },
   ebitda: {
-    label: "EBITDA",
+    label: "EBITDA (ước tính)",
     what: "Lợi nhuận trước lãi vay, thuế, khấu hao — đại diện sức khỏe vận hành.",
-    logic: "EBITDA = GP − OpEx (không gồm lãi/thuế/khấu hao).",
-    dataFlow: "Accounting (P&L) → Sheet (section=kpi, metric=ebitda) → parser → dashboard.",
+    logic: "EBITDA = GP − OpEx. ⚠️ SUY LUẬN LOGIC: OpEx ước tính = chi phí nhân sự (~59 người × ~$2.5K/tháng) + overhead ~$30K/tháng. Chưa có số OpEx thực.",
+    dataFlow: "Tạm suy ra từ GP thực (workbook) − OpEx ước tính. Khi có P&L kế toán thật → thay bằng section=kpi, metric=ebitda.",
   },
   forecastProgress: {
     label: "Tiến độ Forecast",
@@ -153,10 +153,10 @@ export const METRIC_DOCS: Record<string, MetricDoc> = {
     dataFlow: "HRMS → Sheet (section=team_workforce, headcount) → parser.",
   },
   utilization: {
-    label: "Capacity Utilization",
+    label: "Capacity Utilization (ước tính)",
     what: "Mức sử dụng năng lực làm việc của team.",
-    logic: "% = giờ tính phí / giờ khả dụng × 100.",
-    dataFlow: "Timesheet/Ops → Sheet (… utilization) → parser.",
+    logic: "% = giờ tính phí / giờ khả dụng × 100. ⚠️ SUY LUẬN LOGIC: hiện là ước lượng — chưa có timesheet thực.",
+    dataFlow: "Tạm ước lượng. Khi có Timesheet/Ops → Sheet (… utilization) → parser.",
   },
   attrition: {
     label: "Attrition Rate",
@@ -165,10 +165,10 @@ export const METRIC_DOCS: Record<string, MetricDoc> = {
     dataFlow: "HRMS → Sheet (… attrition) → parser.",
   },
   costPerHead: {
-    label: "Cost per Head",
+    label: "Cost per Head (ước tính)",
     what: "Chi phí nhân sự bình quân đầu người mỗi kỳ ($K).",
-    logic: "= totalCost (quy $K) / headcount.",
-    dataFlow: "Payroll → Sheet (… cost_per_head / total_cost) → parser.",
+    logic: "= totalCost (quy $K) / headcount. ⚠️ SUY LUẬN LOGIC: hiện ước tính ~$2–3K/người/tháng — chưa có payroll thực.",
+    dataFlow: "Tạm ước tính. Khi có Payroll → Sheet (… cost_per_head / total_cost) → parser.",
   },
   revenueContribution: {
     label: "Revenue Contribution",
@@ -179,16 +179,34 @@ export const METRIC_DOCS: Record<string, MetricDoc> = {
 
   // ── Operations ──────────────────────────────────────────────────────────
   serviceCenter: {
-    label: "Plants & Centers",
+    label: "Plants & Centers (ước tính)",
     what: "Hiệu quả vận hành & chi phí theo từng center (HQ/Fulfillment/Procurement).",
-    logic: "Var = Actual − Target (chi phí). Index = Actual / Target × 100.",
-    dataFlow: "Ops/Accounting → Sheet (section=operations_center) → parser.",
+    logic: "Var = Actual − Target (chi phí). Index = Actual / Target × 100. ⚠️ SUY LUẬN LOGIC: chi phí center hiện ước tính theo địa điểm/nhân sự — chưa có sổ chi phí theo center.",
+    dataFlow: "Tạm ước tính. Khi có Ops/Accounting → Sheet (section=operations_center) → parser.",
   },
   supplier: {
-    label: "Supplier & Bank Ecosystem",
+    label: "Supplier & Bank Ecosystem (ước tính)",
     what: "Mức chi tiêu và hiệu suất của ngân hàng/đại lý đối tác.",
-    logic: "performance% do Ops chấm theo SLA/chất lượng; spend = chi tiêu kỳ.",
-    dataFlow: "Procurement → Sheet (section=supply_partner) → parser.",
+    logic: "performance% theo SLA/chất lượng; spend = chi tiêu kỳ. ⚠️ SUY LUẬN LOGIC: hiện ước lượng — chưa có nguồn procurement.",
+    dataFlow: "Tạm ước tính. Khi có Procurement → Sheet (section=supply_partner) → parser.",
+  },
+  cashFlow: {
+    label: "Cash Flow (ước tính)",
+    what: "Dòng tiền Operating/Investing/Financing theo kỳ.",
+    logic: "⚠️ SUY LUẬN LOGIC: Operating inflow ≈ doanh thu × 0.92 (thu tiền); outflow ≈ (Revenue − EBITDA) × 0.95; net = inflow − outflow. Investing/Financing là giả định nhỏ.",
+    dataFlow: "Tạm suy ra từ revenue/EBITDA thực. Khi có Treasury → Sheet (section=capital_cf) → parser.",
+  },
+  payable: {
+    label: "Payables (ước tính)",
+    what: "Công nợ phải trả ngân hàng/đại lý/nhà nước kèm hạn.",
+    logic: "⚠️ SUY LUẬN LOGIC: danh mục & số tiền hiện là ví dụ hợp lý — chưa có sổ AP thực.",
+    dataFlow: "Tạm ước tính. Khi có AP/ERP → Sheet (section=payable) → parser.",
+  },
+  revenue_target: {
+    label: "Revenue Target (suy luận)",
+    what: "Mục tiêu doanh thu kỳ để đối chiếu với thực tế.",
+    logic: "⚠️ SUY LUẬN LOGIC: file nguồn chỉ có GP target, không có revenue target → tạm suy = GP target ÷ biên GP 0.66.",
+    dataFlow: "Suy ra từ GP target (workbook). Khi có revenue target thật → section=kpi, metric=revenue, cột target.",
   },
 
   // ── Risk ────────────────────────────────────────────────────────────────

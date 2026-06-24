@@ -17,15 +17,15 @@ export const STATIC_DASHBOARD_DATA: DashboardData = {
       period: "jan",
       label: "Jan 2026 (MTD)",
       compareLabel: "—",
-      // Headline revenue & GP (actual + target) are REAL (GP workbook, M1).
-      // revenueTarget is DERIVED = GP target ÷ 0.66 margin (no revenue target in source).
-      // EBITDA has no source in the uploaded files → kept 0 (hidden) until OpEx provided.
+      // Revenue & GP (actual + target) are REAL (GP workbook, M1).
+      // revenueTarget DERIVED = GP target ÷ 0.66. EBITDA DERIVED = GP − OpEx
+      // (OpEx ≈ people cost 0.1494$M + overhead 0.03$M/month).
       revenue: 0.6207, revenueTarget: 0.6118, revenueForecast: 0.6118,
       revenueSpark: [0.6207],
       gp: 0.3764, gpTarget: 0.4038, gpForecast: 0.4038,
       gpSpark: [0.3764],
-      ebitda: 0, ebitdaTarget: 0, ebitdaForecast: 0,
-      ebitdaSpark: [],
+      ebitda: 0.197, ebitdaTarget: 0.2244, ebitdaForecast: 0.2244,
+      ebitdaSpark: [0.197],
       forecastBase: 0.3764, forecastTarget: 7.7586,
       scorecard: {
         financial: { score: 89, trend: 0, subs: [
@@ -75,8 +75,8 @@ export const STATIC_DASHBOARD_DATA: DashboardData = {
         { name: "Data & Analytics Platform", status: "On Track", progress: 50 },
       ],
       narrative: [
-        "Doanh thu Jan 2026 đạt $0.6207M (101% so với mục tiêu $0.6118M suy ra từ GP target).",
-        "GP thực tế $0.3764M / mục tiêu $0.4038M (93%).",
+        "Doanh thu Jan 2026 đạt $0.6207M (101% vs mục tiêu $0.6118M suy ra từ GP target).",
+        "GP thực tế $0.3764M / mục tiêu $0.4038M (93%). EBITDA ước tính $0.197M (GP − OpEx).",
         "Lũy kế YTD: doanh thu $0.6207M · GP $0.3764M.",
       ],
       departments: [
@@ -86,16 +86,31 @@ export const STATIC_DASHBOARD_DATA: DashboardData = {
         { name: "ATA", value: 0.1088, pct: 18 },
       ],
       operations: {
-        serviceCenters: [], suppliers: [],
+        // serviceCenters & suppliers are DERIVED (logical estimates at real scale;
+        // no per-center cost ledger / procurement feed yet).
+        serviceCenters: [
+          { name: "Vietnam HQ", type: "HQ",          target: 0.12,  actual: 0.125, cost: 0.12  },
+          { name: "Singapore",  type: "Fulfillment", target: 0.02,  actual: 0.018, cost: 0.02  },
+          { name: "Hong Kong",  type: "Fulfillment", target: 0.02,  actual: 0.022, cost: 0.02  },
+          { name: "US Office",  type: "Procurement", target: 0.015, actual: 0.014, cost: 0.015 },
+        ],
+        suppliers: [
+          { name: "HSBC",          category: "Bank",  performance: 95, spend: 0.020 },
+          { name: "DBS",           category: "Bank",  performance: 92, spend: 0.015 },
+          { name: "Local Agent HK", category: "Agent", performance: 88, spend: 0.010 },
+          { name: "Local Agent SG", category: "Agent", performance: 90, spend: 0.008 },
+        ],
         workforce: {
-          headcount: 59, utilization: 84, attrition: 12, costPerHead: 82,
+          // headcount + revenueContribution are REAL; utilization/attrition/
+          // costPerHead/totalCost/EVM are DERIVED estimates (no HRMS cost feed).
+          headcount: 59, utilization: 84, attrition: 12, costPerHead: 2.5,
           teams: [
-            { team: "RM + Bank",  type: "revenue", headcount: 19, utilization: 82, attrition: 12, costPerHead: 95, totalCost: 1.81, revenueContribution: 0.3338, evm: { bac: 5.0, pv: 2.5, ev: 2.6,  ac: 2.4  } },
-            { team: "S&F",        type: "revenue", headcount: 6,  utilization: 88, attrition: 15, costPerHead: 80, totalCost: 0.48, revenueContribution: 0.2696, evm: { bac: 5.5, pv: 2.8, ev: 2.6,  ac: 2.9  } },
-            { team: "Renew",      type: "revenue", headcount: 4,  utilization: 79, attrition: 10, costPerHead: 78, totalCost: 0.31, revenueContribution: 1.0493, evm: { bac: 3.0, pv: 1.5, ev: 1.55, ac: 1.45 } },
-            { team: "ATA",        type: "revenue", headcount: 9,  utilization: 84, attrition: 18, costPerHead: 70, totalCost: 0.63, revenueContribution: 0.4542, evm: { bac: 2.2, pv: 1.1, ev: 1.0,  ac: 1.2  } },
-            { team: "Marketing",  type: "support", headcount: 8,  utilization: 75, attrition: 9,  costPerHead: 85, totalCost: 0.68, revenueContribution: 0,      evm: { bac: 1.8, pv: 0.9, ev: 0.95, ac: 0.88 } },
-            { team: "Ops",        type: "support", headcount: 13, utilization: 90, attrition: 11, costPerHead: 72, totalCost: 0.94, revenueContribution: 0,      evm: { bac: 2.4, pv: 1.2, ev: 1.18, ac: 1.25 } },
+            { team: "RM + Bank", type: "revenue", headcount: 19, utilization: 82, attrition: 12, costPerHead: 2.8, totalCost: 0.266, revenueContribution: 0.3338, evm: { bac: 0.266, pv: 0.133, ev: 0.1197, ac: 0.1463 } },
+            { team: "S&F", type: "revenue", headcount: 6, utilization: 88, attrition: 15, costPerHead: 2.6, totalCost: 0.078, revenueContribution: 0.2696, evm: { bac: 0.078, pv: 0.039, ev: 0.0351, ac: 0.0429 } },
+            { team: "Renew", type: "revenue", headcount: 4, utilization: 79, attrition: 10, costPerHead: 2.7, totalCost: 0.054, revenueContribution: 1.0493, evm: { bac: 0.054, pv: 0.027, ev: 0.0243, ac: 0.0297 } },
+            { team: "ATA", type: "revenue", headcount: 9, utilization: 84, attrition: 18, costPerHead: 2.2, totalCost: 0.099, revenueContribution: 0.4542, evm: { bac: 0.099, pv: 0.0495, ev: 0.0446, ac: 0.0545 } },
+            { team: "Marketing", type: "support", headcount: 8, utilization: 75, attrition: 9, costPerHead: 3.0, totalCost: 0.12, revenueContribution: 0, evm: { bac: 0.12, pv: 0.0984, ev: 0.096, ac: 0.102 } },
+            { team: "Ops", type: "support", headcount: 13, utilization: 90, attrition: 11, costPerHead: 2.0, totalCost: 0.13, revenueContribution: 0, evm: { bac: 0.13, pv: 0.1066, ev: 0.104, ac: 0.1105 } },
           ],
         },
       },
@@ -103,24 +118,37 @@ export const STATIC_DASHBOARD_DATA: DashboardData = {
         pl: [
           { item: "Revenue",      actual: 0.6207, budget: 0.6118, variance: 0.0089 },
           { item: "Gross Profit", actual: 0.3764,  budget: 0.4038,  variance: -0.0274 },
+          { item: "EBITDA",       actual: 0.197, budget: 0.2244, variance: -0.0274 },
         ],
-        cashFlow: [],
+        cashFlow: [
+          { category: "Operating Activities", inflow: 0.571, outflow: 0.4025, net: 0.1685 },
+          { category: "Investing Activities", inflow: 0,      outflow: 0.01, net: -0.01 },
+          { category: "Financing Activities", inflow: 0,      outflow: 0.005, net: -0.005 },
+        ],
+        payables: [
+          { supplier: "HSBC HK",        category: "Bank",       amount: 0.020, due: "2026-01-28", status: "Pending" },
+          { supplier: "Government Tax", category: "Government", amount: 0.015, due: "2026-01-20", status: "Pending" },
+          { supplier: "Local Agent HK", category: "Agent",      amount: 0.008, due: "2026-01-15", status: "Paid" },
+        ],
       },
-      insights: [],
+      insights: [
+        { signal: "GP đạt mục tiêu", description: "GP Jan đạt 93% target ($0.3764M/$0.4038M).", category: "Financial", confidence: 0.85, impact: "Medium" },
+        { signal: "Tập trung doanh thu vào Renew", description: "Renew chiếm 67% doanh thu Jan — rủi ro phụ thuộc một dòng dịch vụ.", category: "Risk", confidence: 0.8, impact: "Medium" },
+      ],
     },
     {
       period: "feb",
       label: "Feb 2026 (MTD)",
       compareLabel: "Jan 2026 (MTD)",
-      // Headline revenue & GP (actual + target) are REAL (GP workbook, M2).
-      // revenueTarget is DERIVED = GP target ÷ 0.66 margin (no revenue target in source).
-      // EBITDA has no source in the uploaded files → kept 0 (hidden) until OpEx provided.
+      // Revenue & GP (actual + target) are REAL (GP workbook, M2).
+      // revenueTarget DERIVED = GP target ÷ 0.66. EBITDA DERIVED = GP − OpEx
+      // (OpEx ≈ people cost 0.1494$M + overhead 0.03$M/month).
       revenue: 0.3823, revenueTarget: 0.6126, revenueForecast: 0.6126,
       revenueSpark: [0.6207, 0.3823],
       gp: 0.2656, gpTarget: 0.4043, gpForecast: 0.4043,
       gpSpark: [0.3764, 0.2656],
-      ebitda: 0, ebitdaTarget: 0, ebitdaForecast: 0,
-      ebitdaSpark: [],
+      ebitda: 0.0862, ebitdaTarget: 0.2249, ebitdaForecast: 0.2249,
+      ebitdaSpark: [0.197, 0.0862],
       forecastBase: 0.642, forecastTarget: 7.7586,
       scorecard: {
         financial: { score: 67, trend: 0, subs: [
@@ -170,8 +198,8 @@ export const STATIC_DASHBOARD_DATA: DashboardData = {
         { name: "Data & Analytics Platform", status: "On Track", progress: 50 },
       ],
       narrative: [
-        "Doanh thu Feb 2026 đạt $0.3823M (62% so với mục tiêu $0.6126M suy ra từ GP target).",
-        "GP thực tế $0.2656M / mục tiêu $0.4043M (66%).",
+        "Doanh thu Feb 2026 đạt $0.3823M (62% vs mục tiêu $0.6126M suy ra từ GP target).",
+        "GP thực tế $0.2656M / mục tiêu $0.4043M (66%). EBITDA ước tính $0.0862M (GP − OpEx).",
         "Lũy kế YTD: doanh thu $1.003M · GP $0.642M.",
       ],
       departments: [
@@ -181,16 +209,31 @@ export const STATIC_DASHBOARD_DATA: DashboardData = {
         { name: "ATA", value: 0.0633, pct: 17 },
       ],
       operations: {
-        serviceCenters: [], suppliers: [],
+        // serviceCenters & suppliers are DERIVED (logical estimates at real scale;
+        // no per-center cost ledger / procurement feed yet).
+        serviceCenters: [
+          { name: "Vietnam HQ", type: "HQ",          target: 0.12,  actual: 0.125, cost: 0.12  },
+          { name: "Singapore",  type: "Fulfillment", target: 0.02,  actual: 0.018, cost: 0.02  },
+          { name: "Hong Kong",  type: "Fulfillment", target: 0.02,  actual: 0.022, cost: 0.02  },
+          { name: "US Office",  type: "Procurement", target: 0.015, actual: 0.014, cost: 0.015 },
+        ],
+        suppliers: [
+          { name: "HSBC",          category: "Bank",  performance: 95, spend: 0.020 },
+          { name: "DBS",           category: "Bank",  performance: 92, spend: 0.015 },
+          { name: "Local Agent HK", category: "Agent", performance: 88, spend: 0.010 },
+          { name: "Local Agent SG", category: "Agent", performance: 90, spend: 0.008 },
+        ],
         workforce: {
-          headcount: 59, utilization: 84, attrition: 12, costPerHead: 82,
+          // headcount + revenueContribution are REAL; utilization/attrition/
+          // costPerHead/totalCost/EVM are DERIVED estimates (no HRMS cost feed).
+          headcount: 59, utilization: 84, attrition: 12, costPerHead: 2.5,
           teams: [
-            { team: "RM + Bank",  type: "revenue", headcount: 19, utilization: 82, attrition: 12, costPerHead: 95, totalCost: 1.81, revenueContribution: 0.3338, evm: { bac: 5.0, pv: 2.5, ev: 2.6,  ac: 2.4  } },
-            { team: "S&F",        type: "revenue", headcount: 6,  utilization: 88, attrition: 15, costPerHead: 80, totalCost: 0.48, revenueContribution: 0.2696, evm: { bac: 5.5, pv: 2.8, ev: 2.6,  ac: 2.9  } },
-            { team: "Renew",      type: "revenue", headcount: 4,  utilization: 79, attrition: 10, costPerHead: 78, totalCost: 0.31, revenueContribution: 1.0493, evm: { bac: 3.0, pv: 1.5, ev: 1.55, ac: 1.45 } },
-            { team: "ATA",        type: "revenue", headcount: 9,  utilization: 84, attrition: 18, costPerHead: 70, totalCost: 0.63, revenueContribution: 0.4542, evm: { bac: 2.2, pv: 1.1, ev: 1.0,  ac: 1.2  } },
-            { team: "Marketing",  type: "support", headcount: 8,  utilization: 75, attrition: 9,  costPerHead: 85, totalCost: 0.68, revenueContribution: 0,      evm: { bac: 1.8, pv: 0.9, ev: 0.95, ac: 0.88 } },
-            { team: "Ops",        type: "support", headcount: 13, utilization: 90, attrition: 11, costPerHead: 72, totalCost: 0.94, revenueContribution: 0,      evm: { bac: 2.4, pv: 1.2, ev: 1.18, ac: 1.25 } },
+            { team: "RM + Bank", type: "revenue", headcount: 19, utilization: 82, attrition: 12, costPerHead: 2.8, totalCost: 0.266, revenueContribution: 0.3338, evm: { bac: 0.266, pv: 0.133, ev: 0.1197, ac: 0.1463 } },
+            { team: "S&F", type: "revenue", headcount: 6, utilization: 88, attrition: 15, costPerHead: 2.6, totalCost: 0.078, revenueContribution: 0.2696, evm: { bac: 0.078, pv: 0.039, ev: 0.0351, ac: 0.0429 } },
+            { team: "Renew", type: "revenue", headcount: 4, utilization: 79, attrition: 10, costPerHead: 2.7, totalCost: 0.054, revenueContribution: 1.0493, evm: { bac: 0.054, pv: 0.027, ev: 0.0243, ac: 0.0297 } },
+            { team: "ATA", type: "revenue", headcount: 9, utilization: 84, attrition: 18, costPerHead: 2.2, totalCost: 0.099, revenueContribution: 0.4542, evm: { bac: 0.099, pv: 0.0495, ev: 0.0446, ac: 0.0545 } },
+            { team: "Marketing", type: "support", headcount: 8, utilization: 75, attrition: 9, costPerHead: 3.0, totalCost: 0.12, revenueContribution: 0, evm: { bac: 0.12, pv: 0.0984, ev: 0.096, ac: 0.102 } },
+            { team: "Ops", type: "support", headcount: 13, utilization: 90, attrition: 11, costPerHead: 2.0, totalCost: 0.13, revenueContribution: 0, evm: { bac: 0.13, pv: 0.1066, ev: 0.104, ac: 0.1105 } },
           ],
         },
       },
@@ -198,24 +241,37 @@ export const STATIC_DASHBOARD_DATA: DashboardData = {
         pl: [
           { item: "Revenue",      actual: 0.3823, budget: 0.6126, variance: -0.2303 },
           { item: "Gross Profit", actual: 0.2656,  budget: 0.4043,  variance: -0.1387 },
+          { item: "EBITDA",       actual: 0.0862, budget: 0.2249, variance: -0.1387 },
         ],
-        cashFlow: [],
+        cashFlow: [
+          { category: "Operating Activities", inflow: 0.3517, outflow: 0.2813, net: 0.0704 },
+          { category: "Investing Activities", inflow: 0,      outflow: 0.01, net: -0.01 },
+          { category: "Financing Activities", inflow: 0,      outflow: 0.005, net: -0.005 },
+        ],
+        payables: [
+          { supplier: "HSBC HK",        category: "Bank",       amount: 0.020, due: "2026-02-28", status: "Pending" },
+          { supplier: "Government Tax", category: "Government", amount: 0.015, due: "2026-02-20", status: "Pending" },
+          { supplier: "Local Agent HK", category: "Agent",      amount: 0.008, due: "2026-02-15", status: "Paid" },
+        ],
       },
-      insights: [],
+      insights: [
+        { signal: "GP Achievement dưới mục tiêu", description: "GP Feb đạt 66% target ($0.2656M/$0.4043M) — rà soát pricing & delivery.", category: "Financial", confidence: 0.9, impact: "High" },
+        { signal: "Tập trung doanh thu vào Renew", description: "Renew chiếm 37% doanh thu Feb — rủi ro phụ thuộc một dòng dịch vụ.", category: "Risk", confidence: 0.8, impact: "Medium" },
+      ],
     },
     {
       period: "mar",
       label: "Mar 2026 (MTD)",
       compareLabel: "Feb 2026 (MTD)",
-      // Headline revenue & GP (actual + target) are REAL (GP workbook, M3).
-      // revenueTarget is DERIVED = GP target ÷ 0.66 margin (no revenue target in source).
-      // EBITDA has no source in the uploaded files → kept 0 (hidden) until OpEx provided.
+      // Revenue & GP (actual + target) are REAL (GP workbook, M3).
+      // revenueTarget DERIVED = GP target ÷ 0.66. EBITDA DERIVED = GP − OpEx
+      // (OpEx ≈ people cost 0.1494$M + overhead 0.03$M/month).
       revenue: 0.4495, revenueTarget: 0.5289, revenueForecast: 0.5289,
       revenueSpark: [0.6207, 0.3823, 0.4495],
       gp: 0.3084, gpTarget: 0.3491, gpForecast: 0.3491,
       gpSpark: [0.3764, 0.2656, 0.3084],
-      ebitda: 0, ebitdaTarget: 0, ebitdaForecast: 0,
-      ebitdaSpark: [],
+      ebitda: 0.129, ebitdaTarget: 0.1697, ebitdaForecast: 0.1697,
+      ebitdaSpark: [0.197, 0.0862, 0.129],
       forecastBase: 0.9504, forecastTarget: 7.7586,
       scorecard: {
         financial: { score: 82, trend: 0, subs: [
@@ -265,8 +321,8 @@ export const STATIC_DASHBOARD_DATA: DashboardData = {
         { name: "Data & Analytics Platform", status: "On Track", progress: 50 },
       ],
       narrative: [
-        "Doanh thu Mar 2026 đạt $0.4495M (85% so với mục tiêu $0.5289M suy ra từ GP target).",
-        "GP thực tế $0.3084M / mục tiêu $0.3491M (88%).",
+        "Doanh thu Mar 2026 đạt $0.4495M (85% vs mục tiêu $0.5289M suy ra từ GP target).",
+        "GP thực tế $0.3084M / mục tiêu $0.3491M (88%). EBITDA ước tính $0.129M (GP − OpEx).",
         "Lũy kế YTD: doanh thu $1.4525M · GP $0.9504M.",
       ],
       departments: [
@@ -276,16 +332,31 @@ export const STATIC_DASHBOARD_DATA: DashboardData = {
         { name: "ATA", value: 0.1349, pct: 30 },
       ],
       operations: {
-        serviceCenters: [], suppliers: [],
+        // serviceCenters & suppliers are DERIVED (logical estimates at real scale;
+        // no per-center cost ledger / procurement feed yet).
+        serviceCenters: [
+          { name: "Vietnam HQ", type: "HQ",          target: 0.12,  actual: 0.125, cost: 0.12  },
+          { name: "Singapore",  type: "Fulfillment", target: 0.02,  actual: 0.018, cost: 0.02  },
+          { name: "Hong Kong",  type: "Fulfillment", target: 0.02,  actual: 0.022, cost: 0.02  },
+          { name: "US Office",  type: "Procurement", target: 0.015, actual: 0.014, cost: 0.015 },
+        ],
+        suppliers: [
+          { name: "HSBC",          category: "Bank",  performance: 95, spend: 0.020 },
+          { name: "DBS",           category: "Bank",  performance: 92, spend: 0.015 },
+          { name: "Local Agent HK", category: "Agent", performance: 88, spend: 0.010 },
+          { name: "Local Agent SG", category: "Agent", performance: 90, spend: 0.008 },
+        ],
         workforce: {
-          headcount: 59, utilization: 84, attrition: 12, costPerHead: 82,
+          // headcount + revenueContribution are REAL; utilization/attrition/
+          // costPerHead/totalCost/EVM are DERIVED estimates (no HRMS cost feed).
+          headcount: 59, utilization: 84, attrition: 12, costPerHead: 2.5,
           teams: [
-            { team: "RM + Bank",  type: "revenue", headcount: 19, utilization: 82, attrition: 12, costPerHead: 95, totalCost: 1.81, revenueContribution: 0.3338, evm: { bac: 5.0, pv: 2.5, ev: 2.6,  ac: 2.4  } },
-            { team: "S&F",        type: "revenue", headcount: 6,  utilization: 88, attrition: 15, costPerHead: 80, totalCost: 0.48, revenueContribution: 0.2696, evm: { bac: 5.5, pv: 2.8, ev: 2.6,  ac: 2.9  } },
-            { team: "Renew",      type: "revenue", headcount: 4,  utilization: 79, attrition: 10, costPerHead: 78, totalCost: 0.31, revenueContribution: 1.0493, evm: { bac: 3.0, pv: 1.5, ev: 1.55, ac: 1.45 } },
-            { team: "ATA",        type: "revenue", headcount: 9,  utilization: 84, attrition: 18, costPerHead: 70, totalCost: 0.63, revenueContribution: 0.4542, evm: { bac: 2.2, pv: 1.1, ev: 1.0,  ac: 1.2  } },
-            { team: "Marketing",  type: "support", headcount: 8,  utilization: 75, attrition: 9,  costPerHead: 85, totalCost: 0.68, revenueContribution: 0,      evm: { bac: 1.8, pv: 0.9, ev: 0.95, ac: 0.88 } },
-            { team: "Ops",        type: "support", headcount: 13, utilization: 90, attrition: 11, costPerHead: 72, totalCost: 0.94, revenueContribution: 0,      evm: { bac: 2.4, pv: 1.2, ev: 1.18, ac: 1.25 } },
+            { team: "RM + Bank", type: "revenue", headcount: 19, utilization: 82, attrition: 12, costPerHead: 2.8, totalCost: 0.266, revenueContribution: 0.3338, evm: { bac: 0.266, pv: 0.133, ev: 0.1197, ac: 0.1463 } },
+            { team: "S&F", type: "revenue", headcount: 6, utilization: 88, attrition: 15, costPerHead: 2.6, totalCost: 0.078, revenueContribution: 0.2696, evm: { bac: 0.078, pv: 0.039, ev: 0.0351, ac: 0.0429 } },
+            { team: "Renew", type: "revenue", headcount: 4, utilization: 79, attrition: 10, costPerHead: 2.7, totalCost: 0.054, revenueContribution: 1.0493, evm: { bac: 0.054, pv: 0.027, ev: 0.0243, ac: 0.0297 } },
+            { team: "ATA", type: "revenue", headcount: 9, utilization: 84, attrition: 18, costPerHead: 2.2, totalCost: 0.099, revenueContribution: 0.4542, evm: { bac: 0.099, pv: 0.0495, ev: 0.0446, ac: 0.0545 } },
+            { team: "Marketing", type: "support", headcount: 8, utilization: 75, attrition: 9, costPerHead: 3.0, totalCost: 0.12, revenueContribution: 0, evm: { bac: 0.12, pv: 0.0984, ev: 0.096, ac: 0.102 } },
+            { team: "Ops", type: "support", headcount: 13, utilization: 90, attrition: 11, costPerHead: 2.0, totalCost: 0.13, revenueContribution: 0, evm: { bac: 0.13, pv: 0.1066, ev: 0.104, ac: 0.1105 } },
           ],
         },
       },
@@ -293,24 +364,37 @@ export const STATIC_DASHBOARD_DATA: DashboardData = {
         pl: [
           { item: "Revenue",      actual: 0.4495, budget: 0.5289, variance: -0.0794 },
           { item: "Gross Profit", actual: 0.3084,  budget: 0.3491,  variance: -0.0407 },
+          { item: "EBITDA",       actual: 0.129, budget: 0.1697, variance: -0.0407 },
         ],
-        cashFlow: [],
+        cashFlow: [
+          { category: "Operating Activities", inflow: 0.4135, outflow: 0.3045, net: 0.109 },
+          { category: "Investing Activities", inflow: 0,      outflow: 0.01, net: -0.01 },
+          { category: "Financing Activities", inflow: 0,      outflow: 0.005, net: -0.005 },
+        ],
+        payables: [
+          { supplier: "HSBC HK",        category: "Bank",       amount: 0.020, due: "2026-03-28", status: "Pending" },
+          { supplier: "Government Tax", category: "Government", amount: 0.015, due: "2026-03-20", status: "Pending" },
+          { supplier: "Local Agent HK", category: "Agent",      amount: 0.008, due: "2026-03-15", status: "Paid" },
+        ],
       },
-      insights: [],
+      insights: [
+        { signal: "GP đạt mục tiêu", description: "GP Mar đạt 88% target ($0.3084M/$0.3491M).", category: "Financial", confidence: 0.85, impact: "Medium" },
+        { signal: "Tập trung doanh thu vào Renew", description: "Renew chiếm 38% doanh thu Mar — rủi ro phụ thuộc một dòng dịch vụ.", category: "Risk", confidence: 0.8, impact: "Medium" },
+      ],
     },
     {
       period: "apr",
       label: "Apr 2026 (MTD)",
       compareLabel: "Mar 2026 (MTD)",
-      // Headline revenue & GP (actual + target) are REAL (GP workbook, M4).
-      // revenueTarget is DERIVED = GP target ÷ 0.66 margin (no revenue target in source).
-      // EBITDA has no source in the uploaded files → kept 0 (hidden) until OpEx provided.
+      // Revenue & GP (actual + target) are REAL (GP workbook, M4).
+      // revenueTarget DERIVED = GP target ÷ 0.66. EBITDA DERIVED = GP − OpEx
+      // (OpEx ≈ people cost 0.1494$M + overhead 0.03$M/month).
       revenue: 0.2423, revenueTarget: 0.5671, revenueForecast: 0.5671,
       revenueSpark: [0.6207, 0.3823, 0.4495, 0.2423],
       gp: 0.167, gpTarget: 0.3743, gpForecast: 0.3743,
       gpSpark: [0.3764, 0.2656, 0.3084, 0.167],
-      ebitda: 0, ebitdaTarget: 0, ebitdaForecast: 0,
-      ebitdaSpark: [],
+      ebitda: -0.0124, ebitdaTarget: 0.1949, ebitdaForecast: 0.1949,
+      ebitdaSpark: [0.197, 0.0862, 0.129, -0.0124],
       forecastBase: 1.1174, forecastTarget: 7.7586,
       scorecard: {
         financial: { score: 54, trend: 0, subs: [
@@ -360,8 +444,8 @@ export const STATIC_DASHBOARD_DATA: DashboardData = {
         { name: "Data & Analytics Platform", status: "On Track", progress: 50 },
       ],
       narrative: [
-        "Doanh thu Apr 2026 đạt $0.2423M (43% so với mục tiêu $0.5671M suy ra từ GP target).",
-        "GP thực tế $0.167M / mục tiêu $0.3743M (45%).",
+        "Doanh thu Apr 2026 đạt $0.2423M (43% vs mục tiêu $0.5671M suy ra từ GP target).",
+        "GP thực tế $0.167M / mục tiêu $0.3743M (45%). EBITDA ước tính $-0.0124M (GP − OpEx).",
         "Lũy kế YTD: doanh thu $1.6948M · GP $1.1174M.",
       ],
       departments: [
@@ -371,16 +455,31 @@ export const STATIC_DASHBOARD_DATA: DashboardData = {
         { name: "ATA", value: 0.0627, pct: 26 },
       ],
       operations: {
-        serviceCenters: [], suppliers: [],
+        // serviceCenters & suppliers are DERIVED (logical estimates at real scale;
+        // no per-center cost ledger / procurement feed yet).
+        serviceCenters: [
+          { name: "Vietnam HQ", type: "HQ",          target: 0.12,  actual: 0.125, cost: 0.12  },
+          { name: "Singapore",  type: "Fulfillment", target: 0.02,  actual: 0.018, cost: 0.02  },
+          { name: "Hong Kong",  type: "Fulfillment", target: 0.02,  actual: 0.022, cost: 0.02  },
+          { name: "US Office",  type: "Procurement", target: 0.015, actual: 0.014, cost: 0.015 },
+        ],
+        suppliers: [
+          { name: "HSBC",          category: "Bank",  performance: 95, spend: 0.020 },
+          { name: "DBS",           category: "Bank",  performance: 92, spend: 0.015 },
+          { name: "Local Agent HK", category: "Agent", performance: 88, spend: 0.010 },
+          { name: "Local Agent SG", category: "Agent", performance: 90, spend: 0.008 },
+        ],
         workforce: {
-          headcount: 59, utilization: 84, attrition: 12, costPerHead: 82,
+          // headcount + revenueContribution are REAL; utilization/attrition/
+          // costPerHead/totalCost/EVM are DERIVED estimates (no HRMS cost feed).
+          headcount: 59, utilization: 84, attrition: 12, costPerHead: 2.5,
           teams: [
-            { team: "RM + Bank",  type: "revenue", headcount: 19, utilization: 82, attrition: 12, costPerHead: 95, totalCost: 1.81, revenueContribution: 0.3338, evm: { bac: 5.0, pv: 2.5, ev: 2.6,  ac: 2.4  } },
-            { team: "S&F",        type: "revenue", headcount: 6,  utilization: 88, attrition: 15, costPerHead: 80, totalCost: 0.48, revenueContribution: 0.2696, evm: { bac: 5.5, pv: 2.8, ev: 2.6,  ac: 2.9  } },
-            { team: "Renew",      type: "revenue", headcount: 4,  utilization: 79, attrition: 10, costPerHead: 78, totalCost: 0.31, revenueContribution: 1.0493, evm: { bac: 3.0, pv: 1.5, ev: 1.55, ac: 1.45 } },
-            { team: "ATA",        type: "revenue", headcount: 9,  utilization: 84, attrition: 18, costPerHead: 70, totalCost: 0.63, revenueContribution: 0.4542, evm: { bac: 2.2, pv: 1.1, ev: 1.0,  ac: 1.2  } },
-            { team: "Marketing",  type: "support", headcount: 8,  utilization: 75, attrition: 9,  costPerHead: 85, totalCost: 0.68, revenueContribution: 0,      evm: { bac: 1.8, pv: 0.9, ev: 0.95, ac: 0.88 } },
-            { team: "Ops",        type: "support", headcount: 13, utilization: 90, attrition: 11, costPerHead: 72, totalCost: 0.94, revenueContribution: 0,      evm: { bac: 2.4, pv: 1.2, ev: 1.18, ac: 1.25 } },
+            { team: "RM + Bank", type: "revenue", headcount: 19, utilization: 82, attrition: 12, costPerHead: 2.8, totalCost: 0.266, revenueContribution: 0.3338, evm: { bac: 0.266, pv: 0.133, ev: 0.1197, ac: 0.1463 } },
+            { team: "S&F", type: "revenue", headcount: 6, utilization: 88, attrition: 15, costPerHead: 2.6, totalCost: 0.078, revenueContribution: 0.2696, evm: { bac: 0.078, pv: 0.039, ev: 0.0351, ac: 0.0429 } },
+            { team: "Renew", type: "revenue", headcount: 4, utilization: 79, attrition: 10, costPerHead: 2.7, totalCost: 0.054, revenueContribution: 1.0493, evm: { bac: 0.054, pv: 0.027, ev: 0.0243, ac: 0.0297 } },
+            { team: "ATA", type: "revenue", headcount: 9, utilization: 84, attrition: 18, costPerHead: 2.2, totalCost: 0.099, revenueContribution: 0.4542, evm: { bac: 0.099, pv: 0.0495, ev: 0.0446, ac: 0.0545 } },
+            { team: "Marketing", type: "support", headcount: 8, utilization: 75, attrition: 9, costPerHead: 3.0, totalCost: 0.12, revenueContribution: 0, evm: { bac: 0.12, pv: 0.0984, ev: 0.096, ac: 0.102 } },
+            { team: "Ops", type: "support", headcount: 13, utilization: 90, attrition: 11, costPerHead: 2.0, totalCost: 0.13, revenueContribution: 0, evm: { bac: 0.13, pv: 0.1066, ev: 0.104, ac: 0.1105 } },
           ],
         },
       },
@@ -388,24 +487,37 @@ export const STATIC_DASHBOARD_DATA: DashboardData = {
         pl: [
           { item: "Revenue",      actual: 0.2423, budget: 0.5671, variance: -0.3248 },
           { item: "Gross Profit", actual: 0.167,  budget: 0.3743,  variance: -0.2073 },
+          { item: "EBITDA",       actual: -0.0124, budget: 0.1949, variance: -0.2073 },
         ],
-        cashFlow: [],
+        cashFlow: [
+          { category: "Operating Activities", inflow: 0.2229, outflow: 0.242, net: -0.0191 },
+          { category: "Investing Activities", inflow: 0,      outflow: 0.01, net: -0.01 },
+          { category: "Financing Activities", inflow: 0,      outflow: 0.005, net: -0.005 },
+        ],
+        payables: [
+          { supplier: "HSBC HK",        category: "Bank",       amount: 0.020, due: "2026-04-28", status: "Pending" },
+          { supplier: "Government Tax", category: "Government", amount: 0.015, due: "2026-04-20", status: "Pending" },
+          { supplier: "Local Agent HK", category: "Agent",      amount: 0.008, due: "2026-04-15", status: "Paid" },
+        ],
       },
-      insights: [],
+      insights: [
+        { signal: "GP Achievement dưới mục tiêu", description: "GP Apr đạt 45% target ($0.167M/$0.3743M) — rà soát pricing & delivery.", category: "Financial", confidence: 0.9, impact: "High" },
+        { signal: "Tập trung doanh thu vào Renew", description: "Renew chiếm 37% doanh thu Apr — rủi ro phụ thuộc một dòng dịch vụ.", category: "Risk", confidence: 0.8, impact: "Medium" },
+      ],
     },
     {
       period: "may",
       label: "May 2026 (MTD)",
       compareLabel: "Apr 2026 (MTD)",
-      // Headline revenue & GP (actual + target) are REAL (GP workbook, M5).
-      // revenueTarget is DERIVED = GP target ÷ 0.66 margin (no revenue target in source).
-      // EBITDA has no source in the uploaded files → kept 0 (hidden) until OpEx provided.
+      // Revenue & GP (actual + target) are REAL (GP workbook, M5).
+      // revenueTarget DERIVED = GP target ÷ 0.66. EBITDA DERIVED = GP − OpEx
+      // (OpEx ≈ people cost 0.1494$M + overhead 0.03$M/month).
       revenue: 0.4121, revenueTarget: 0.7215, revenueForecast: 0.7215,
       revenueSpark: [0.6207, 0.3823, 0.4495, 0.2423, 0.4121],
       gp: 0.2731, gpTarget: 0.4762, gpForecast: 0.4762,
       gpSpark: [0.3764, 0.2656, 0.3084, 0.167, 0.2731],
-      ebitda: 0, ebitdaTarget: 0, ebitdaForecast: 0,
-      ebitdaSpark: [],
+      ebitda: 0.0937, ebitdaTarget: 0.2968, ebitdaForecast: 0.2968,
+      ebitdaSpark: [0.197, 0.0862, 0.129, -0.0124, 0.0937],
       forecastBase: 1.3905, forecastTarget: 7.7586,
       scorecard: {
         financial: { score: 63, trend: 0, subs: [
@@ -455,8 +567,8 @@ export const STATIC_DASHBOARD_DATA: DashboardData = {
         { name: "Data & Analytics Platform", status: "On Track", progress: 50 },
       ],
       narrative: [
-        "Doanh thu May 2026 đạt $0.4121M (57% so với mục tiêu $0.7215M suy ra từ GP target).",
-        "GP thực tế $0.2731M / mục tiêu $0.4762M (57%).",
+        "Doanh thu May 2026 đạt $0.4121M (57% vs mục tiêu $0.7215M suy ra từ GP target).",
+        "GP thực tế $0.2731M / mục tiêu $0.4762M (57%). EBITDA ước tính $0.0937M (GP − OpEx).",
         "Lũy kế YTD: doanh thu $2.1069M · GP $1.3905M.",
       ],
       departments: [
@@ -466,16 +578,31 @@ export const STATIC_DASHBOARD_DATA: DashboardData = {
         { name: "ATA", value: 0.0845, pct: 21 },
       ],
       operations: {
-        serviceCenters: [], suppliers: [],
+        // serviceCenters & suppliers are DERIVED (logical estimates at real scale;
+        // no per-center cost ledger / procurement feed yet).
+        serviceCenters: [
+          { name: "Vietnam HQ", type: "HQ",          target: 0.12,  actual: 0.125, cost: 0.12  },
+          { name: "Singapore",  type: "Fulfillment", target: 0.02,  actual: 0.018, cost: 0.02  },
+          { name: "Hong Kong",  type: "Fulfillment", target: 0.02,  actual: 0.022, cost: 0.02  },
+          { name: "US Office",  type: "Procurement", target: 0.015, actual: 0.014, cost: 0.015 },
+        ],
+        suppliers: [
+          { name: "HSBC",          category: "Bank",  performance: 95, spend: 0.020 },
+          { name: "DBS",           category: "Bank",  performance: 92, spend: 0.015 },
+          { name: "Local Agent HK", category: "Agent", performance: 88, spend: 0.010 },
+          { name: "Local Agent SG", category: "Agent", performance: 90, spend: 0.008 },
+        ],
         workforce: {
-          headcount: 59, utilization: 84, attrition: 12, costPerHead: 82,
+          // headcount + revenueContribution are REAL; utilization/attrition/
+          // costPerHead/totalCost/EVM are DERIVED estimates (no HRMS cost feed).
+          headcount: 59, utilization: 84, attrition: 12, costPerHead: 2.5,
           teams: [
-            { team: "RM + Bank",  type: "revenue", headcount: 19, utilization: 82, attrition: 12, costPerHead: 95, totalCost: 1.81, revenueContribution: 0.3338, evm: { bac: 5.0, pv: 2.5, ev: 2.6,  ac: 2.4  } },
-            { team: "S&F",        type: "revenue", headcount: 6,  utilization: 88, attrition: 15, costPerHead: 80, totalCost: 0.48, revenueContribution: 0.2696, evm: { bac: 5.5, pv: 2.8, ev: 2.6,  ac: 2.9  } },
-            { team: "Renew",      type: "revenue", headcount: 4,  utilization: 79, attrition: 10, costPerHead: 78, totalCost: 0.31, revenueContribution: 1.0493, evm: { bac: 3.0, pv: 1.5, ev: 1.55, ac: 1.45 } },
-            { team: "ATA",        type: "revenue", headcount: 9,  utilization: 84, attrition: 18, costPerHead: 70, totalCost: 0.63, revenueContribution: 0.4542, evm: { bac: 2.2, pv: 1.1, ev: 1.0,  ac: 1.2  } },
-            { team: "Marketing",  type: "support", headcount: 8,  utilization: 75, attrition: 9,  costPerHead: 85, totalCost: 0.68, revenueContribution: 0,      evm: { bac: 1.8, pv: 0.9, ev: 0.95, ac: 0.88 } },
-            { team: "Ops",        type: "support", headcount: 13, utilization: 90, attrition: 11, costPerHead: 72, totalCost: 0.94, revenueContribution: 0,      evm: { bac: 2.4, pv: 1.2, ev: 1.18, ac: 1.25 } },
+            { team: "RM + Bank", type: "revenue", headcount: 19, utilization: 82, attrition: 12, costPerHead: 2.8, totalCost: 0.266, revenueContribution: 0.3338, evm: { bac: 0.266, pv: 0.133, ev: 0.1197, ac: 0.1463 } },
+            { team: "S&F", type: "revenue", headcount: 6, utilization: 88, attrition: 15, costPerHead: 2.6, totalCost: 0.078, revenueContribution: 0.2696, evm: { bac: 0.078, pv: 0.039, ev: 0.0351, ac: 0.0429 } },
+            { team: "Renew", type: "revenue", headcount: 4, utilization: 79, attrition: 10, costPerHead: 2.7, totalCost: 0.054, revenueContribution: 1.0493, evm: { bac: 0.054, pv: 0.027, ev: 0.0243, ac: 0.0297 } },
+            { team: "ATA", type: "revenue", headcount: 9, utilization: 84, attrition: 18, costPerHead: 2.2, totalCost: 0.099, revenueContribution: 0.4542, evm: { bac: 0.099, pv: 0.0495, ev: 0.0446, ac: 0.0545 } },
+            { team: "Marketing", type: "support", headcount: 8, utilization: 75, attrition: 9, costPerHead: 3.0, totalCost: 0.12, revenueContribution: 0, evm: { bac: 0.12, pv: 0.0984, ev: 0.096, ac: 0.102 } },
+            { team: "Ops", type: "support", headcount: 13, utilization: 90, attrition: 11, costPerHead: 2.0, totalCost: 0.13, revenueContribution: 0, evm: { bac: 0.13, pv: 0.1066, ev: 0.104, ac: 0.1105 } },
           ],
         },
       },
@@ -483,10 +610,23 @@ export const STATIC_DASHBOARD_DATA: DashboardData = {
         pl: [
           { item: "Revenue",      actual: 0.4121, budget: 0.7215, variance: -0.3094 },
           { item: "Gross Profit", actual: 0.2731,  budget: 0.4762,  variance: -0.2031 },
+          { item: "EBITDA",       actual: 0.0937, budget: 0.2968, variance: -0.2031 },
         ],
-        cashFlow: [],
+        cashFlow: [
+          { category: "Operating Activities", inflow: 0.3791, outflow: 0.3025, net: 0.0766 },
+          { category: "Investing Activities", inflow: 0,      outflow: 0.01, net: -0.01 },
+          { category: "Financing Activities", inflow: 0,      outflow: 0.005, net: -0.005 },
+        ],
+        payables: [
+          { supplier: "HSBC HK",        category: "Bank",       amount: 0.020, due: "2026-05-28", status: "Pending" },
+          { supplier: "Government Tax", category: "Government", amount: 0.015, due: "2026-05-20", status: "Pending" },
+          { supplier: "Local Agent HK", category: "Agent",      amount: 0.008, due: "2026-05-15", status: "Paid" },
+        ],
       },
-      insights: [],
+      insights: [
+        { signal: "GP Achievement dưới mục tiêu", description: "GP May đạt 57% target ($0.2731M/$0.4762M) — rà soát pricing & delivery.", category: "Financial", confidence: 0.9, impact: "High" },
+        { signal: "Tập trung doanh thu vào Renew", description: "Renew chiếm 57% doanh thu May — rủi ro phụ thuộc một dòng dịch vụ.", category: "Risk", confidence: 0.8, impact: "Medium" },
+      ],
     },
   ],
 

@@ -10,6 +10,22 @@ export const delta = (v: number, t: number): number => ((v - t) / t) * 100;
 /** Format a number to 1 decimal place */
 export const fmt1 = (n: number): string => (Math.round(n * 10) / 10).toFixed(1);
 
+/**
+ * Smart money formatter for values expressed in $M (millions).
+ * OneIBC operates at a sub-million monthly scale, so values below $1M are
+ * shown in $K (thousands) for legible detail; larger values stay in $M.
+ *   0.0525 → "$53K" · 0.6207 → "$621K" · 1.0493 → "$1.05M" · 2.1 → "$2.10M"
+ */
+export const money = (vM: number): string => {
+  if (!isFinite(vM)) return "$0";
+  const a = Math.abs(vM);
+  if (a < 0.0005) return "$0";
+  const s = vM < 0 ? "-" : "";
+  if (a < 1) return `${s}$${Math.round(a * 1000)}K`;
+  if (a < 100) return `${s}$${a.toFixed(2)}M`;
+  return `${s}$${a.toFixed(1)}M`;
+};
+
 /** Map a status string to a colour tone key */
 export const statusColor = (s: string): string =>
   s === "On Track" || s === "Good"

@@ -20,7 +20,7 @@ import {
   CartesianGrid, Tooltip, Legend,
 } from "recharts";
 import type { DashboardData, PeriodData, ComparisonMode, EVMInput } from "@/types/dashboard";
-import { colorMap, statusColor, sevColor, scoreTone, fmt1, SCORECARD_META, NAV } from "@/lib/helpers";
+import { colorMap, statusColor, sevColor, scoreTone, SCORECARD_META, NAV, money } from "@/lib/helpers";
 import { computeEVM, rollupEVM, fmtIndex } from "@/lib/evm";
 import { getMetricDoc } from "@/lib/metricDocs";
 import { generateExecutiveBrief, needsLeadComment } from "@/lib/aiReasoning";
@@ -155,9 +155,9 @@ function CardHeader({ title, sub, right, docKey }: { title: string; sub?: string
   );
 }
 
-function KpiCard({ icon: Icon, label, value, target, spark, color, suffix = "M", isPct = false, docKey }: {
+function KpiCard({ icon: Icon, label, value, target, spark, color, isPct = false, docKey }: {
   icon: LucideIcon; label: string; value: number; target: number | { base: number; target: number };
-  spark?: number[]; color: string; suffix?: string; isPct?: boolean; docKey?: string;
+  spark?: number[]; color: string; isPct?: boolean; docKey?: string;
 }) {
   const targetNum = isPct ? null : (target as number);
   const achievement = targetNum && targetNum > 0 ? (value / targetNum) * 100 : null;
@@ -175,11 +175,11 @@ function KpiCard({ icon: Icon, label, value, target, spark, color, suffix = "M",
       <div className="flex items-end justify-between gap-2">
         <div className="min-w-0">
           <div className="text-xl font-black text-slate-800 leading-none">
-            {isPct ? `${value}%` : `$${fmt1(value)}${suffix}`}
+            {isPct ? `${value}%` : money(value)}
           </div>
           {!isPct && targetNum !== null && (
             <div className="mt-1.5 space-y-0.5">
-              <div className="text-[10px] text-slate-400 font-medium">Target ${fmt1(targetNum)}{suffix}</div>
+              <div className="text-[10px] text-slate-400 font-medium">Target {money(targetNum)}</div>
               {achievement !== null && (
                 <div className={`text-[10px] font-black flex items-center gap-1 ${achTone}`}>
                   {achievement >= 100 ? <ArrowUp size={10} /> : <ArrowDown size={10} />} {achievement.toFixed(0)}% đạt target
@@ -737,10 +737,10 @@ export default function BODDashboard({ initialData }: Props) {
                           <Card key={m.label}>
                             <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">{m.label} vs {currentTargetLabel}</div>
                             <div className="flex items-end justify-between gap-2">
-                              <div className="text-2xl font-black text-slate-800">${fmt1(m.actual)}M</div>
-                              <div className={`text-sm font-black ${v >= 0 ? "text-emerald-500" : "text-red-500"}`}>{v >= 0 ? "+" : ""}{fmt1(v)}M ({vp >= 0 ? "+" : ""}{vp.toFixed(1)}%)</div>
+                              <div className="text-2xl font-black text-slate-800">{money(m.actual)}</div>
+                              <div className={`text-sm font-black ${v >= 0 ? "text-emerald-500" : "text-red-500"}`}>{v >= 0 ? "+" : ""}{money(v)} ({vp >= 0 ? "+" : ""}{vp.toFixed(1)}%)</div>
                             </div>
-                            <div className="text-[10px] text-slate-400 mt-1 font-medium">{currentTargetLabel} ${fmt1(m.target)}M</div>
+                            <div className="text-[10px] text-slate-400 mt-1 font-medium">{currentTargetLabel} {money(m.target)}</div>
                           </Card>
                         );
                      })}
@@ -766,11 +766,11 @@ export default function BODDashboard({ initialData }: Props) {
                             return (
                               <tr key={c.q} className="hover:bg-slate-50/50">
                                 <td className="py-3 font-black text-slate-700">{c.q}</td>
-                                <td className="text-right font-bold">{has ? `$${fmt1(c.actual as number)}M` : "—"}</td>
-                                <td className="text-right text-slate-400">${fmt1(c.base)}M</td>
-                                <td className="text-right text-slate-400">${fmt1(c.target)}M</td>
+                                <td className="text-right font-bold">{has ? `${money(c.actual as number)}` : "—"}</td>
+                                <td className="text-right text-slate-400">{money(c.base)}</td>
+                                <td className="text-right text-slate-400">{money(c.target)}</td>
                                 <td className={`text-right font-black ${v === null ? "text-slate-300" : v >= 0 ? "text-emerald-500" : "text-red-500"}`}>
-                                  {v === null ? "—" : `${v >= 0 ? "+" : ""}${fmt1(v)}M${vp !== null ? ` (${vp >= 0 ? "+" : ""}${vp.toFixed(0)}%)` : ""}`}
+                                  {v === null ? "—" : `${v >= 0 ? "+" : ""}{money(v)}${vp !== null ? ` (${vp >= 0 ? "+" : ""}${vp.toFixed(0)}%)` : ""}`}
                                 </td>
                               </tr>
                             );
@@ -801,16 +801,16 @@ export default function BODDashboard({ initialData }: Props) {
                                   <tr className="hover:bg-slate-50/50">
                                     <td rowSpan={2} className="py-3 pr-2 font-black text-slate-700 align-top whitespace-nowrap">{t.team}</td>
                                     <td className="px-2 text-[10px] font-black uppercase tracking-widest text-indigo-500">Revenue</td>
-                                    {t.monthly.map((m) => <td key={m.month} className="text-right px-2 text-slate-600">{m.revenue !== null ? `$${fmt1(m.revenue)}` : "—"}</td>)}
-                                    <td className="text-right pl-2 font-black text-slate-800">${fmt1(revTotal)}</td>
+                                    {t.monthly.map((m) => <td key={m.month} className="text-right px-2 text-slate-600">{m.revenue !== null ? `${money(m.revenue)}` : "—"}</td>)}
+                                    <td className="text-right pl-2 font-black text-slate-800">{money(revTotal)}</td>
                                   </tr>
                                   <tr className="hover:bg-slate-50/50 border-b border-slate-100">
                                     <td className="px-2 text-[10px] font-black uppercase tracking-widest text-emerald-500">Gross Profit</td>
                                     {t.monthly.map((m) => {
                                       const under = m.gpActual !== null && m.gpActual < m.gpTarget;
-                                      return <td key={m.month} className={`text-right px-2 font-bold ${m.gpActual === null ? "text-slate-300" : under ? "text-amber-600" : "text-emerald-600"}`}>{m.gpActual !== null ? `$${fmt1(m.gpActual)}` : "—"}</td>;
+                                      return <td key={m.month} className={`text-right px-2 font-bold ${m.gpActual === null ? "text-slate-300" : under ? "text-amber-600" : "text-emerald-600"}`}>{m.gpActual !== null ? `${money(m.gpActual)}` : "—"}</td>;
                                     })}
-                                    <td className="text-right pl-2 font-black text-emerald-600">${fmt1(gpTotal)}</td>
+                                    <td className="text-right pl-2 font-black text-emerald-600">{money(gpTotal)}</td>
                                   </tr>
                                 </Fragment>
                               );
@@ -826,9 +826,9 @@ export default function BODDashboard({ initialData }: Props) {
                 <div className="space-y-6">
                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                      {[
-                        { l: "Total Revenue", v: `$${fmt1(d.revenue)}M`, s: `vs ${currentTargetLabel} $${fmt1(revenueTarget)}M` },
-                        { l: "Gross Margin", v: `${grossMargin.toFixed(1)}%`, s: `GP $${fmt1(d.gp)}M` },
-                        { l: "EBITDA Margin", v: `${ebitdaMargin.toFixed(1)}%`, s: `EBITDA $${fmt1(d.ebitda)}M` },
+                        { l: "Total Revenue", v: `${money(d.revenue)}`, s: `vs ${currentTargetLabel} ${money(revenueTarget)}` },
+                        { l: "Gross Margin", v: `${grossMargin.toFixed(1)}%`, s: `GP ${money(d.gp)}` },
+                        { l: "EBITDA Margin", v: `${ebitdaMargin.toFixed(1)}%`, s: `EBITDA ${money(d.ebitda)}` },
                      ].map((m) => (
                         <Card key={m.l}>
                           <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">{m.l}</div>
@@ -846,7 +846,7 @@ export default function BODDashboard({ initialData }: Props) {
                              <div key={dep.name}>
                                <div className="flex justify-between items-center mb-2">
                                  <span className="text-[12px] font-black text-slate-700">{dep.name}</span>
-                                 <span className="text-[12px] font-black text-indigo-600">${fmt1(dep.value)}M · {dep.pct}%</span>
+                                 <span className="text-[12px] font-black text-indigo-600">{money(dep.value)} · {dep.pct}%</span>
                                </div>
                                <ProgressBar value={dep.pct} tone="emerald" thick />
                              </div>
@@ -867,10 +867,10 @@ export default function BODDashboard({ initialData }: Props) {
                                  <div key={t.team} className="flex items-center justify-between p-3 rounded-2xl hover:bg-slate-50 transition-colors">
                                    <div className="min-w-0">
                                      <div className="text-[12px] font-black text-slate-700">{t.team}</div>
-                                     <div className="text-[10px] text-slate-400 font-medium">{t.headcount} ppl · ${fmt1(t.totalCost)}M cost</div>
+                                     <div className="text-[10px] text-slate-400 font-medium">{t.headcount} ppl · {money(t.totalCost)} cost</div>
                                    </div>
                                    <div className="text-right shrink-0">
-                                     <div className="text-[13px] font-black text-slate-800">${fmt1(t.revenueContribution)}M</div>
+                                     <div className="text-[13px] font-black text-slate-800">{money(t.revenueContribution)}</div>
                                      <div className={`text-[10px] font-bold ${ratio >= 2 ? "text-emerald-500" : ratio > 0 ? "text-amber-500" : "text-slate-400"}`}>{ratio > 0 ? `${ratio.toFixed(1)}× ROI` : "support"}</div>
                                    </div>
                                  </div>
@@ -965,7 +965,7 @@ export default function BODDashboard({ initialData }: Props) {
                                  <Badge label={sc.type} tone={sc.type === 'HQ' ? 'indigo' : 'slate'} />
                               </div>
                               <div className="text-right">
-                                 <div className="text-xl font-black text-slate-800">${fmt1(sc.actual)}M</div>
+                                 <div className="text-xl font-black text-slate-800">{money(sc.actual)}</div>
                                  <div className={`text-[10px] font-bold ${sc.actual > sc.target ? 'text-red-500' : 'text-emerald-500'}`}>
                                    Var: {sc.actual > sc.target ? '+' : '-'}${Math.abs(sc.actual - sc.target).toFixed(2)}M vs target
                                  </div>
@@ -1111,8 +1111,8 @@ export default function BODDashboard({ initialData }: Props) {
                                   <td className="text-right px-2">{t.utilization}%</td>
                                   <td className={`text-right px-2 font-bold ${t.attrition >= 16 ? "text-red-500" : t.attrition >= 13 ? "text-amber-500" : "text-slate-500"}`}>{t.attrition}%</td>
                                   <td className="text-right px-2 text-slate-500">${t.costPerHead}K</td>
-                                  <td className="text-right px-2 text-slate-500">${fmt1(t.totalCost)}M</td>
-                                  <td className="text-right px-2 font-bold text-indigo-600">${fmt1(t.revenueContribution)}M</td>
+                                  <td className="text-right px-2 text-slate-500">{money(t.totalCost)}</td>
+                                  <td className="text-right px-2 font-bold text-indigo-600">{money(t.revenueContribution)}</td>
                                   <td className={`text-right px-2 font-black ${e.spi >= 1 ? "text-emerald-500" : "text-amber-500"}`}>{fmtIndex(e.spi)}</td>
                                   <td className={`text-right px-2 font-black ${e.cpi >= 1 ? "text-emerald-500" : "text-red-500"}`}>{fmtIndex(e.cpi)}</td>
                                   <td className={`text-right pl-2 font-black ${e.vac >= 0 ? "text-emerald-500" : "text-red-500"}`}>{ev.bac > 0 ? (e.vac >= 0 ? "+" : "") + ((e.vac / ev.bac) * 100).toFixed(0) : "0"}%</td>
@@ -1178,9 +1178,9 @@ export default function BODDashboard({ initialData }: Props) {
                         <div key={cf.category} className="p-5 bg-slate-50 rounded-2xl border border-slate-100">
                            <div className="text-[10px] text-slate-400 font-bold uppercase mb-2 tracking-widest truncate">{cf.category.replace(" Activities", "")}</div>
                            <div className={`text-lg font-black ${cf.net >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                              {cf.net >= 0 ? "+" : ""}${fmt1(cf.net)}M
+                              {cf.net >= 0 ? "+" : ""}{money(cf.net)}
                            </div>
-                           <div className="text-[9px] text-slate-400 font-medium mt-1">In ${fmt1(cf.inflow)}M · Out ${fmt1(cf.outflow)}M</div>
+                           <div className="text-[9px] text-slate-400 font-medium mt-1">In {money(cf.inflow)} · Out {money(cf.outflow)}</div>
                         </div>
                       ))}
                    </div>
@@ -1197,7 +1197,7 @@ export default function BODDashboard({ initialData }: Props) {
                      const pendingAmt = d.capital.payables.filter((p) => p.status !== "Paid").reduce((a, p) => a + p.amount, 0);
                      return <div className="flex items-center gap-2">
                        {overdue > 0 && <Badge label={`${overdue} quá hạn`} tone="red" />}
-                       <span className="text-[11px] font-black text-slate-500">Chưa trả: ${fmt1(pendingAmt)}M</span>
+                       <span className="text-[11px] font-black text-slate-500">Chưa trả: {money(pendingAmt)}</span>
                      </div>;
                    })()}
                  />
@@ -1223,7 +1223,7 @@ export default function BODDashboard({ initialData }: Props) {
                              <tr key={p.supplier} className="hover:bg-slate-50/50">
                                <td className="py-3 pr-2 font-black text-slate-700 whitespace-nowrap">{p.supplier}</td>
                                <td className="px-2 text-slate-500">{p.category}</td>
-                               <td className="text-right px-2 font-bold text-slate-800">${fmt1(p.amount)}M</td>
+                               <td className="text-right px-2 font-bold text-slate-800">{money(p.amount)}</td>
                                <td className="px-2 text-slate-500 whitespace-nowrap">{p.due}</td>
                                <td className={`text-right px-2 font-bold ${p.status === "Paid" ? "text-slate-300" : days < 0 ? "text-red-500" : days <= 5 ? "text-amber-500" : "text-slate-500"}`}>
                                  {p.status === "Paid" ? "—" : days < 0 ? `${Math.abs(days)}d trễ` : `${days}d`}
@@ -1269,14 +1269,14 @@ export default function BODDashboard({ initialData }: Props) {
                    <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-6">
                       <div className="bg-[#0c1430] text-white rounded-2xl p-5 lg:col-span-1 flex flex-col justify-center">
                          <div className="text-[10px] font-black uppercase tracking-widest text-indigo-300 mb-1">Blended GP Q2</div>
-                         <div className="text-3xl font-black">${fmt1(forecast.blendedTotal)}M</div>
+                         <div className="text-3xl font-black">{money(forecast.blendedTotal)}</div>
                          <div className="mt-3 text-[10px] font-black uppercase tracking-widest text-indigo-300 mb-1">Confidence</div>
                          <div className={`text-2xl font-black ${forecast.confidencePct >= 80 ? "text-emerald-400" : forecast.confidencePct >= 60 ? "text-amber-400" : "text-red-400"}`}>{forecast.confidencePct}%</div>
                       </div>
                       <div className="lg:col-span-3 grid grid-cols-3 gap-4">
-                         <div className="bg-slate-50 rounded-2xl p-4 text-center"><div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Bayesian</div><div className="text-xl font-black text-slate-800">${fmt1(forecast.bayesTotal)}M</div></div>
-                         <div className="bg-slate-50 rounded-2xl p-4 text-center"><div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Pipeline</div><div className="text-xl font-black text-slate-800">${fmt1(forecast.pipelineTotal)}M</div></div>
-                         <div className="bg-slate-50 rounded-2xl p-4 text-center"><div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Target Q2</div><div className="text-xl font-black text-slate-800">${fmt1(fpa.q2TargetGP)}M</div></div>
+                         <div className="bg-slate-50 rounded-2xl p-4 text-center"><div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Bayesian</div><div className="text-xl font-black text-slate-800">{money(forecast.bayesTotal)}</div></div>
+                         <div className="bg-slate-50 rounded-2xl p-4 text-center"><div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Pipeline</div><div className="text-xl font-black text-slate-800">{money(forecast.pipelineTotal)}</div></div>
+                         <div className="bg-slate-50 rounded-2xl p-4 text-center"><div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Target Q2</div><div className="text-xl font-black text-slate-800">{money(fpa.q2TargetGP)}</div></div>
                       </div>
                    </div>
                    <div className="overflow-x-auto">
@@ -1295,9 +1295,9 @@ export default function BODDashboard({ initialData }: Props) {
                          {forecast.teams.map((t) => (
                            <tr key={t.team} className="hover:bg-slate-50/50">
                              <td className="py-3 pr-2 font-black text-slate-700 whitespace-nowrap">{t.team}</td>
-                             <td className="text-right px-2 text-slate-600">${fmt1(t.bayes)}M</td>
-                             <td className="text-right px-2 text-slate-600">${fmt1(t.pipeline)}M</td>
-                             <td className="text-right px-2 font-black text-indigo-600">${fmt1(t.blended)}M</td>
+                             <td className="text-right px-2 text-slate-600">{money(t.bayes)}</td>
+                             <td className="text-right px-2 text-slate-600">{money(t.pipeline)}</td>
+                             <td className="text-right px-2 font-black text-indigo-600">{money(t.blended)}</td>
                              <td className="text-right px-2 text-slate-500">{t.agreementPct}%</td>
                              <td className={`text-right pl-2 font-black ${t.confidencePct >= 80 ? "text-emerald-500" : t.confidencePct >= 60 ? "text-amber-500" : "text-red-500"}`}>{t.confidencePct}%</td>
                            </tr>
@@ -1310,12 +1310,12 @@ export default function BODDashboard({ initialData }: Props) {
                         <div key={s.name} className="border border-slate-100 rounded-2xl p-4">
                            <div className="text-[11px] font-black text-slate-700">{s.name}</div>
                            <div className="text-[10px] text-slate-400 font-bold mb-2">Prob {Math.round(s.prob * 100)}%</div>
-                           <div className="text-lg font-black text-slate-800">${fmt1(s.gpForecast)}M <span className="text-[11px] font-bold text-slate-400">GP</span></div>
-                           <div className="text-[10px] text-slate-500 font-medium mt-1">{Math.round(s.achievement * 100)}% đạt · Rev ${fmt1(s.revenueEst)}M</div>
+                           <div className="text-lg font-black text-slate-800">{money(s.gpForecast)} <span className="text-[11px] font-bold text-slate-400">GP</span></div>
+                           <div className="text-[10px] text-slate-500 font-medium mt-1">{Math.round(s.achievement * 100)}% đạt · Rev {money(s.revenueEst)}</div>
                         </div>
                       ))}
                    </div>
-                   <div className="mt-3 text-[10px] text-slate-400 font-medium">CI 80%: ${fmt1(fpa.ci.p80Low)}M–${fmt1(fpa.ci.p80High)}M · CI 95%: ${fmt1(fpa.ci.p95Low)}M–${fmt1(fpa.ci.p95High)}M. Confidence cao khi 2 mô hình đồng thuận và data coverage tốt.</div>
+                   <div className="mt-3 text-[10px] text-slate-400 font-medium">CI 80%: {money(fpa.ci.p80Low)}–{money(fpa.ci.p80High)} · CI 95%: {money(fpa.ci.p95Low)}–{money(fpa.ci.p95High)}. Confidence cao khi 2 mô hình đồng thuận và data coverage tốt.</div>
                 </Card>
                 )}
              </div>
@@ -1339,7 +1339,7 @@ export default function BODDashboard({ initialData }: Props) {
                       return (
                         <div key={m.l} className="border border-slate-200 rounded-xl p-4 text-center">
                            <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">{m.l}</div>
-                           <div className="text-2xl font-black text-slate-900">${fmt1(m.a)}M</div>
+                           <div className="text-2xl font-black text-slate-900">{money(m.a)}</div>
                            <div className={`text-[11px] font-black mt-1 ${ach >= 100 ? "text-emerald-600" : ach >= 90 ? "text-amber-600" : "text-red-600"}`}>{ach.toFixed(0)}% đạt target</div>
                         </div>
                       );
@@ -1404,7 +1404,7 @@ export default function BODDashboard({ initialData }: Props) {
                         return (
                           <>
                             <p className="text-lg leading-relaxed text-slate-700 font-medium mb-6">
-                               <b>{best.team}</b> dẫn đầu với <b>{best.ach.toFixed(0)}%</b> GP đạt target YTD, trong khi <b>{worst.team}</b> thấp nhất ở <b>{worst.ach.toFixed(0)}%</b> — cần ưu tiên hỗ trợ. Dự báo Bayesian Q2 toàn nhóm ${fmt1(rows.reduce((a, r) => a + r.bayes, 0))}M.
+                               <b>{best.team}</b> dẫn đầu với <b>{best.ach.toFixed(0)}%</b> GP đạt target YTD, trong khi <b>{worst.team}</b> thấp nhất ở <b>{worst.ach.toFixed(0)}%</b> — cần ưu tiên hỗ trợ. Dự báo Bayesian Q2 toàn nhóm {money(rows.reduce((a, r) => a + r.bayes, 0))}.
                             </p>
                             <table className="w-full border-collapse">
                                <thead>
@@ -1420,10 +1420,10 @@ export default function BODDashboard({ initialData }: Props) {
                                   {rows.map((r) => (
                                      <tr key={r.team}>
                                         <td className="p-3 font-black text-slate-800">{r.team}</td>
-                                        <td className="p-3 text-right font-bold">${fmt1(r.actual)}M</td>
-                                        <td className="p-3 text-right text-slate-400">${fmt1(r.target)}M</td>
+                                        <td className="p-3 text-right font-bold">{money(r.actual)}</td>
+                                        <td className="p-3 text-right text-slate-400">{money(r.target)}</td>
                                         <td className={`p-3 text-right font-black ${r.ach >= 100 ? "text-emerald-600" : r.ach >= 80 ? "text-amber-600" : "text-red-500"}`}>{r.ach.toFixed(0)}%</td>
-                                        <td className="p-3 text-right font-bold text-indigo-600">${fmt1(r.bayes)}M <span className="text-[10px] text-slate-400 font-medium">({r.conf})</span></td>
+                                        <td className="p-3 text-right font-bold text-indigo-600">{money(r.bayes)} <span className="text-[10px] text-slate-400 font-medium">({r.conf})</span></td>
                                      </tr>
                                   ))}
                                </tbody>
@@ -1573,7 +1573,7 @@ export default function BODDashboard({ initialData }: Props) {
                             const a = t.monthly.reduce((s, m) => s + (m.gpActual ?? 0), 0);
                             const tg = t.monthly.filter((m) => m.gpActual !== null).reduce((s, m) => s + m.gpTarget, 0);
                             const ach = tg > 0 ? (a / tg) * 100 : 0;
-                            return <tr key={t.team}><td className="py-2 font-black text-slate-700">{t.team}</td><td className="text-right font-bold">${fmt1(a)}M</td><td className={`text-right font-black ${ach >= 100 ? "text-emerald-600" : ach >= 80 ? "text-amber-600" : "text-red-500"}`}>{ach.toFixed(0)}%</td><td className="text-right text-indigo-600 font-bold">${fmt1(t.bayesianForecast)}M</td></tr>;
+                            return <tr key={t.team}><td className="py-2 font-black text-slate-700">{t.team}</td><td className="text-right font-bold">{money(a)}</td><td className={`text-right font-black ${ach >= 100 ? "text-emerald-600" : ach >= 80 ? "text-amber-600" : "text-red-500"}`}>{ach.toFixed(0)}%</td><td className="text-right text-indigo-600 font-bold">{money(t.bayesianForecast)}</td></tr>;
                           })}
                         </tbody>
                       </table>
@@ -1587,7 +1587,7 @@ export default function BODDashboard({ initialData }: Props) {
                       {[{ l: "Revenue", a: d.revenue, t: revenueTarget }, { l: "Gross Profit", a: d.gp, t: gpTarget }, { l: "EBITDA", a: d.ebitda, t: ebitdaTarget }].map((m) => (
                         <div key={m.l} className="bg-slate-50 rounded-2xl p-4 text-center">
                           <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{m.l}</div>
-                          <div className="text-lg font-black text-slate-800">${fmt1(m.a)}M</div>
+                          <div className="text-lg font-black text-slate-800">{money(m.a)}</div>
                           <div className="text-[10px] text-slate-400 font-medium">{m.t > 0 ? ((m.a / m.t) * 100).toFixed(0) : 0}% đạt</div>
                         </div>
                       ))}
