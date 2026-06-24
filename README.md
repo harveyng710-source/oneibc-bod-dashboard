@@ -49,6 +49,26 @@ npm run start    # chạy bản build
 
 CI (GitHub Actions, `.github/workflows/ci.yml`) chạy lint + type-check + test + build trên mỗi push/PR.
 
+## 🚂 Deploy lên Railway
+
+Cấu hình build/start/healthcheck nằm trong [`railway.json`](railway.json) (Nixpacks; healthcheck `/api/health`).
+
+1. **Tạo project**: Railway → *New Project* → *Deploy from GitHub repo* → chọn repo này (branch deploy: `main`).
+2. **Database (tùy chọn)**: *+ New* → *Database* → *PostgreSQL*. Railway tự inject `DATABASE_URL`. Thiếu DB ⇒ app vẫn chạy, chỉ không lưu settings/log/chat.
+3. **Variables** (Settings → Variables) — đặt các biến cần dùng:
+   ```env
+   GOOGLE_SHEET_ID=...            # nguồn dữ liệu chính
+   # GOOGLE_SERVICE_ACCOUNT_KEY=  # nếu sheet riêng tư
+   SETTINGS_PASSWORD=...          # bắt buộc nếu mở /settings
+   SETTINGS_SECRET=...            # chuỗi ngẫu nhiên ≥32 ký tự (bắt buộc ở prod)
+   # DATABASE_SSL=require         # chỉ khi dùng Postgres ngoài/proxy
+   ```
+   **Không** cần đặt `PORT` — Railway tự cấp và `next start` đọc tự động.
+4. **Deploy**: Railway tự chạy `npm ci` → `npm run build` → `npm run start`; chờ healthcheck `/api/health` trả `200` là live.
+5. **Domain**: Settings → Networking → *Generate Domain* (hoặc gắn custom domain).
+
+> Mỗi push lên `main` ⇒ Railway tự build & deploy lại. Kiểm tra nhanh sau deploy: `GET https://<domain>/api/health`.
+
 ## 🔐 Settings console & biến môi trường
 - `/settings` được bảo vệ bằng `SETTINGS_PASSWORD` (đặt thêm `SETTINGS_SECRET` ngẫu nhiên ở production).
 - Postgres (`DATABASE_URL`) là **tùy chọn**: lưu override trọng số/HRMS, access log, lịch sử chat. Thiếu ⇒ chạy với mặc định, thay đổi không được lưu.

@@ -74,7 +74,14 @@ Test xoay quanh các lớp **pure** trong `src/lib` (giá trị bắt regression
 - **Sự cố nguồn dữ liệu**: app **tự fallback** Sheets→CSV→static, không trắng màn hình. Kiểm log server (`[dataLoader]`).
 - **Quên/đổi mật khẩu Settings**: đổi `SETTINGS_PASSWORD` trong Variables → session cũ tự vô hiệu (token đổi theo password).
 - **Bật/tắt lưu trữ**: thêm/xoá `DATABASE_URL`. Schema tự tạo lần chạy đầu (`db.ts`).
-- **Deploy (Railway)**: thêm Postgres plugin (inject `DATABASE_URL`); `next start` đọc `PORT` tự động. Nội bộ không cần SSL; proxy ngoài đặt `DATABASE_SSL=require`.
+- **Healthcheck**: `GET /api/health` (liveness; báo source/dbEnabled/settingsAuth được cấu hình, **không** gọi Sheet/DB để khỏi fail deploy khi upstream chậm).
+
+### Deploy lên Railway
+Cấu hình ở [`../railway.json`](../railway.json): Nixpacks · `npm run build` → `npm run start` · healthcheck `/api/health` · restart `ON_FAILURE` (max 10).
+1. *New Project* → *Deploy from GitHub repo* (branch `main`).
+2. *+ New* → *Database* → *PostgreSQL* (tùy chọn; tự inject `DATABASE_URL`). Nội bộ không cần SSL; proxy ngoài đặt `DATABASE_SSL=require`.
+3. Variables: `GOOGLE_SHEET_ID` (+ `GOOGLE_SERVICE_ACCOUNT_KEY` nếu sheet riêng tư), `SETTINGS_PASSWORD`, `SETTINGS_SECRET`. **Không** đặt `PORT` — `next start` đọc tự động.
+4. Generate Domain → kiểm tra `GET /api/health` trả `200`. Mỗi push `main` ⇒ auto build & deploy lại.
 
 ### Biến môi trường (xem `.env.example`)
 `GOOGLE_SHEET_ID`, `GOOGLE_SERVICE_ACCOUNT_KEY`, `GOOGLE_SHEET_TAB`, `DASHBOARD_CSV_URL`, `DATABASE_URL`, `DATABASE_SSL`, `SETTINGS_PASSWORD`, `SETTINGS_SECRET`.
@@ -88,7 +95,6 @@ Test xoay quanh các lớp **pure** trong `src/lib` (giá trị bắt regression
 - Error monitoring tập trung (Sentry/Logtail) thay cho `console.*`.
 - Validate **schema** body khi ghi settings (vd `zod`) — hiện chỉ lọc theo key, chưa kiểm shape value.
 - `Content-Security-Policy` (cần tinh chỉnh cho inline style/script của Next).
-- Endpoint `/api/health` cho readiness/liveness probe.
 
 **Trung hạn**
 - Công cụ migration DB (drizzle/prisma/node-pg-migrate) thay `CREATE IF NOT EXISTS`.
