@@ -2,7 +2,7 @@
 
 Hệ thống dashboard quản trị dành cho Ban Giám đốc (BOD), hỗ trợ tổng hợp và biểu diễn dữ liệu chiến lược, tài chính và vận hành.
 
-> 📄 Đặc tả đầy đủ: [`docs/PRD.md`](docs/PRD.md) · Mẫu nhập liệu: [`docs/google-sheet-template.md`](docs/google-sheet-template.md) · Bàn giao/vận hành: [`docs/HANDOVER.md`](docs/HANDOVER.md)
+> 📄 Đặc tả đầy đủ: [`docs/PRD.md`](docs/PRD.md) · Mẫu nhập liệu: [`docs/google-sheet-template.md`](docs/google-sheet-template.md) · Bàn giao/vận hành: [`docs/HANDOVER.md`](docs/HANDOVER.md) · AI context (đọc nhanh cho LLM): [`/ai-context.html`](public/ai-context.html)
 
 ## 🚀 Tính năng chính
 - **6 view điều hành**: Overview (Pulse / Variance / Driver), Operations (Centers & Workforce), Capital (P&L · Cash Flow · Payables), Insight Signals, Executive Briefing, Reports Library.

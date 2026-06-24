@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="AI context card cho OneIBC BOD Dashboard — mô tả sản phẩm, UI, mô hình dữ liệu, công thức chỉ số và luồng thông tin để AI/LLM đọc hiểu nhanh.">
+<meta name="robots" content="index,follow">
+<title>OneIBC BOD Dashboard — AI Context</title>
+<style>
+  :root{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;line-height:1.55;color:#1f2937}
+  body{max-width:880px;margin:2rem auto;padding:0 1rem}
+  h1{font-size:1.5rem;margin:.2rem 0} h2{font-size:1.15rem;margin:1.6rem 0 .4rem;border-bottom:1px solid #e5e7eb;padding-bottom:.2rem}
+  h3{font-size:1rem;margin:1rem 0 .3rem} code{background:#f3f4f6;padding:.1em .35em;border-radius:4px;font-size:.9em}
+  table{border-collapse:collapse;width:100%;margin:.4rem 0;font-size:.9rem}
+  th,td{border:1px solid #e5e7eb;padding:.35rem .5rem;text-align:left;vertical-align:top}
+  th{background:#f9fafb} .muted{color:#6b7280;font-size:.85rem} ul{margin:.3rem 0 .3rem 1.1rem}
+</style>
+</head>
+<body>
+
+<h1>OneIBC BOD Dashboard — AI Context</h1>
+<p class="muted">Tài liệu tĩnh, gọn nhẹ giúp AI/LLM hiểu nhanh sản phẩm, UI, dữ liệu và công thức. Cập nhật theo codebase. Đơn vị tiền: <strong>$M</strong> (triệu USD). Mốc thời gian: <strong>M1 = Jan 2026</strong>.</p>
+
+<h2>1. Sản phẩm là gì</h2>
+<p>Bảng điều khiển điều hành (Board of Directors / Executive) cho OneIBC: tổng hợp & biểu diễn dữ liệu tài chính, vận hành, nhân sự, rủi ro và dự báo FP&amp;A trên <strong>một màn hình</strong>. Mục tiêu: lãnh đạo mở vào lúc nào cũng thấy bản tóm tắt điều hành tự tổng hợp; nhân viên nhập liệu qua Google Sheet mẫu (spoon-feed); mọi chỉ số dẫn xuất được tính tại runtime nên luôn nhất quán.</p>
+<ul>
+  <li><strong>Stack:</strong> Next.js (App Router) · React · TypeScript · Recharts · Tailwind. DB tùy chọn: Postgres.</li>
+  <li><strong>Nguồn dữ liệu (ưu tiên):</strong> Google Sheets → CSV URL → static seed. Không cấu hình gì vẫn chạy bằng seed tĩnh.</li>
+  <li><strong>Triết lý số liệu:</strong> chỉ lưu primitive; EVM/scorecard/forecast/aggregate tính lại mỗi lần render.</li>
+</ul>
+
+<h2>2. Cấu trúc UI (6 view)</h2>
+<table>
+<tr><th>View</th><th>Tab con</th><th>Hiển thị</th></tr>
+<tr><td>Overview (Pulse)</td><td>Executive Pulse · Variance Intelligence · Revenue &amp; Margin Driver</td><td>KPI revenue/GP/EBITDA vs target/forecast (thẻ + sparkline), biểu đồ variance theo quý (Area/Line/Bar/Combo), phân rã doanh thu theo team</td></tr>
+<tr><td>Operations (Centers)</td><td>Plants &amp; Supplier · Workforce &amp; Cost</td><td>Hiệu quả center, đối tác ngân hàng/đại lý; nhân sự theo team (headcount, utilization, attrition, cost, EVM), đề xuất khối lượng tháng sau</td></tr>
+<tr><td>Capital (Financials)</td><td>—</td><td>P&amp;L (actual vs budget vs variance), dòng tiền, công nợ phải trả (payables)</td></tr>
+<tr><td>Insight Signals</td><td>—</td><td>Tín hiệu rule/AI kèm độ tin cậy (0–1) và mức ảnh hưởng</td></tr>
+<tr><td>Executive Briefing</td><td>—</td><td>Brief rule-based (variance, EVM portfolio, rủi ro, áp lực nhân sự) + danh mục EVM sáng kiến</td></tr>
+<tr><td>Reports Library</td><td>—</td><td>Thư viện báo cáo; báo cáo bi-weekly/monthly cần team lead nhập comment</td></tr>
+</table>
+<p class="muted">Điều khiển chung: bộ chọn <em>period</em> (mặc định kỳ mới nhất), chế độ so sánh <em>budget ↔ forecast</em>, panel AI Chat (đọc dữ liệu kỳ đang xem), tooltip chỉ số (what/logic/dataFlow).</p>
+
+<h2>3. Mô hình dữ liệu (DashboardData)</h2>
+<ul>
+  <li><code>periods[]</code> — mỗi kỳ: KPI (revenue/gp/ebitda + target/forecast/spark), scorecard 4 trụ, risks, chart quý, initiatives, narrative, departments, operations{serviceCenters, suppliers, workforce.teams}, capital{pl, cashFlow, payables}, insights.</li>
+  <li><code>stories[]</code>, <code>councils[]</code>, <code>structuralRisks[]</code>, <code>reports[]</code> — toàn cục.</li>
+  <li><code>fpa</code> — { q2TargetGP, teams[] (monthly M1–M6, forecast Bayesian+pipeline), scenarios P20/P50/P80, ci }.</li>
+</ul>
+
+<h3>21 section khi nhập liệu (cột <code>section</code>)</h3>
+<p class="muted">kpi, revenue_targets, scorecard, chart, department, narrative, risk, initiative, operations_center, supply_partner, team_workforce, capital_pl, capital_cf, payable, insight_signal, story, report, fpa_monthly, fpa_forecast, fpa_scenario, fpa_ci.</p>
+
+<h2>4. Công thức & rule chính</h2>
+<table>
+<tr><th>Chỉ số</th><th>Công thức</th></tr>
+<tr><td>Điểm pillar scorecard</td><td>Σ(value × weight) / Σ(weight)</td></tr>
+<tr><td>EVM</td><td>SV=EV−PV · CV=EV−AC · SPI=EV/PV · CPI=EV/AC · EAC=BAC/CPI · VAC=BAC−EAC · %complete=EV/BAC</td></tr>
+<tr><td>EVM team revenue</td><td>EV=Σ GP thực tế (tháng đã chốt), PV=Σ GP target, AC=people cost, BAC=q2Target</td></tr>
+<tr><td>Forecast kép</td><td>blended=(bayesian+pipeline)/2 · agreement=1−|b−p|/max · confidence=agreement×factor(High1/Med.85/Low.6)</td></tr>
+<tr><td>Đề xuất khối lượng</td><td>util≥90%→Quá tải (thêm ~hc·(util/85−1)); &lt;70%→Dư; attrition≥16%→+1 backfill; SPI&lt;0.9→cảnh báo</td></tr>
+<tr><td>Tổng hợp nhân sự</td><td>company headcount=Σ team; util/attrition = bình quân trọng số headcount</td></tr>
+</table>
+
+<h2>5. Luồng dữ liệu</h2>
+<p>Salesforce / HRMS / ERP → Google Sheet (workbook 6 tab chủ đề, mỗi dòng có cột <code>section</code>) → <code>googleSheets.ts</code> (API v4 batchGet hoặc public gviz) → <code>csvParser.ts</code> (parseRows) → <code>DashboardData</code> → áp override settings → render. Làm mới ~5 phút/lần (revalidate 300s). API: <code>GET /api/dashboard</code>, <code>POST /api/upload-csv</code>, <code>GET /api/health</code>.</p>
+
+<h2>6. Lưu ý quan trọng cho AI</h2>
+<ul>
+  <li>Số liệu ở <strong>$M</strong>. Quy mô thực OneIBC nhỏ (~$0.6M/tháng), KHÁC các bản demo cũ ở quy mô $138M — đừng nhầm.</li>
+  <li><strong>M1=Jan 2026</strong> … M6=Jun. Kỳ hiện có dữ liệu thực: M1–M5 (Jan–May).</li>
+  <li>2 chỉ số chưa có nguồn: <strong>revenue target</strong> (đang suy ra = GP target ÷ 0.66) và <strong>EBITDA/OpEx</strong> (đang = 0/ẩn). Đừng coi là số thật.</li>
+  <li>AI Chat & Executive Brief hiện <strong>rule-based</strong> (chưa gọi LLM thật) — có sẵn adapter seam để nâng cấp.</li>
+  <li>Team doanh thu: <strong>RM + Bank, S&amp;F, Renew, ATA</strong>. Team hỗ trợ: Marketing, Ops.</li>
+</ul>
+
+<h2>7. Snapshot dữ liệu thật (M1–M5)</h2>
+<p class="muted">Nguồn: GP Forecast Masterworkbook v3.1 (Actuals) + HR Tracking 2026-01-02. Tổng revenue M1–M5 = 2.1069 $M; tổng headcount = 59.</p>
+
+<!-- Machine-readable snapshot: parse this JSON for exact figures. -->
+<script type="application/json" id="oneibc-facts">
+{
+  "currency": "USD millions ($M)",
+  "calendar": { "M1": "Jan 2026", "M5": "May 2026" },
+  "revenueByTeamMonth_$M": {
+    "RM + Bank": { "M1": 0.0525, "M2": 0.0846, "M3": 0.0833, "M4": 0.0596, "M5": 0.0537 },
+    "S&F":       { "M1": 0.0456, "M2": 0.0945, "M3": 0.0597, "M4": 0.0302, "M5": 0.0396 },
+    "Renew":     { "M1": 0.4139, "M2": 0.1398, "M3": 0.1717, "M4": 0.0897, "M5": 0.2343 },
+    "ATA":       { "M1": 0.1088, "M2": 0.0633, "M3": 0.1349, "M4": 0.0627, "M5": 0.0845 }
+  },
+  "revenueTotalByMonth_$M": { "M1": 0.6207, "M2": 0.3823, "M3": 0.4495, "M4": 0.2423, "M5": 0.4121 },
+  "gpActualByMonth_$M":     { "M1": 0.3764, "M2": 0.2656, "M3": 0.3084, "M4": 0.1670, "M5": 0.2731 },
+  "gpTargetByMonth_$M":     { "M1": 0.4038, "M2": 0.4043, "M3": 0.3491, "M4": 0.3743, "M5": 0.4762 },
+  "headcountByTeam": { "RM + Bank": 19, "S&F": 6, "Renew": 4, "ATA": 9, "Marketing": 8, "Ops": 13, "total": 59 },
+  "notes": [
+    "Revenue & GP (actual+target) are real. revenueTarget derived = GP target / 0.66. EBITDA has no source (=0).",
+    "Bank sub-team merged into RM + Bank (Bank had M1 only)."
+  ]
+}
+</script>
+
+<p class="muted">© OneIBC Group · tài liệu nội bộ. Xem thêm: <code>docs/PRD.md</code>, <code>docs/HANDOVER.md</code>.</p>
+
+</body>
+</html>
